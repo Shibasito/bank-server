@@ -2,6 +2,7 @@
 
 ## Base de Datos — Banco (BD1)
 
+Para crear la base de datos, solo basta ejecutar BankServer.java.
 
 ### 🧾 TABLA: CLIENTES
 Contiene la información general de los clientes registrados en el banco.
@@ -62,6 +63,7 @@ Controla los mensajes ya atendidos para asegurar **idempotencia** en la comunica
 |----------------|------|----------------|--------------|
 | **id_mensaje** | TEXT | PRIMARY KEY | Identificador único del mensaje recibido. |
 | **fecha_guardado** | TEXT | DEFAULT datetime('now') | Fecha de registro del mensaje procesado. |
+| **estado** | TEXT | DEFAULT 'procesado' CHECK IN ('procesado', 'en_proceso') | Estadp del mensaje. |
 
 
 ### 🔐 Relaciones principales
@@ -75,3 +77,25 @@ Controla los mensajes ya atendidos para asegurar **idempotencia** en la comunica
 - Todos los registros utilizan texto o valores numéricos simples para compatibilidad con SQLite.  
 - La tabla `MENSAJES_PROCESADOS` evita procesamientos duplicados en entornos concurrentes.
 
+## Idempotencia
+
+### `MesageRepo.java`
+
+`MessageRepo.java` incluye métodos para manejar idempotencia exactly-once para mensajes de RabbitMQ.
+
+#### Métodos
+
+1. tryAcquire(messageId) - Intento de reclamar
+    - Primera vez: Inserta con estado 'en_proceso' → retorna true (este proceso es dueño)
+    - Mensaje duplicado: Ya existe en DB → retorna false (otro proceso lo está procesando o ya lo completó)
+    - Garantía: Solo UN consumidor puede reclamar el mensaje gracias a PRIMARY KEY(id_mensaje)
+2. markDone(messageId) - Completar procesamiento
+    - Marca el mensaje como procesado permanentemente
+    - Previene re-procesamiento futuro del mismo messageId
+3. release(messageId) - Liberar tras fallo
+    - Si el procesamiento falla, libera el claim
+    - Permite que otro consumidor (o reintentos) procese el mensaje
+    - Solo elimina si está 'en_proceso' (no toca mensajes ya procesados)
+4. isDone(messageId) - Verificar estado
+    - Consulta si el mensaje ya fue procesado completamente
+    - Útil para logging o validaciones

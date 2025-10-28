@@ -57,7 +57,8 @@ CREATE TABLE IF NOT EXISTS TRANSACCIONES (
 -- Control de idempotencia para mensajes recibidos por RabbitMQ.
 CREATE TABLE IF NOT EXISTS MENSAJES_PROCESADOS (
     id_mensaje   TEXT PRIMARY KEY,
-    fecha_guardado TEXT NOT NULL DEFAULT (datetime('now'))
+    fecha_guardado TEXT NOT NULL DEFAULT (datetime('now')),
+    estado TEXT NOT NULL DEFAULT ('procesado') CHECK (estado IN ('procesado','en_proceso'))
 );
 
 -- =========================================================
