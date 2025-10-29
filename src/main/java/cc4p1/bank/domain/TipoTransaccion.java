@@ -1,7 +1,7 @@
 package cc4p1.bank.domain;
 
 public enum TipoTransaccion {
-    deposito, retiro, transferencia, comision;
+    deposito, retiro;
 
     public static TipoTransaccion from(String s) {
         return TipoTransaccion.valueOf(s.toLowerCase());

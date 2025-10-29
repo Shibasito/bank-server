@@ -43,9 +43,10 @@ CREATE TABLE IF NOT EXISTS PRESTAMOS (
 -- TABLA: TRANSACCIONES
 -- =========================================================
 CREATE TABLE IF NOT EXISTS TRANSACCIONES (
-    id_transaccion TEXT PRIMARY KEY,             -- TR001, TR002...
+    id_transaccion TEXT PRIMARY KEY,             -- TX001, TX002...
+    id_transferencia TEXT DEFAULT NULL,          -- Opcional, para transferencias entre cuentas. Formato TR001, TR002...
     id_cuenta      TEXT NOT NULL,
-    tipo           TEXT NOT NULL CHECK (tipo IN ('deposito','retiro','transferencia')),
+    tipo           TEXT NOT NULL CHECK (tipo IN ('deposito','retiro')),
     monto          REAL NOT NULL CHECK (monto >= 0),
     fecha          TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (id_cuenta) REFERENCES CUENTAS(id_cuenta)

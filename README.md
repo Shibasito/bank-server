@@ -49,12 +49,14 @@ Almacena todas las operaciones realizadas sobre las cuentas.
 
 | Columna           | Tipo | Restricciones | Descripción |
 |-------------------|------|----------------|--------------|
-| **id_transaccion** | TEXT | PRIMARY KEY | Identificador de la transacción (ej. `TR001`). |
+| **id_transaccion** | TEXT | PRIMARY KEY | Identificador de la transacción (ej. `TX001`). |
+| **id_transferencia** | TEXT | Opcional, por defecto NULL |  Identificador de transferencia (ej. `TR001`). |
 | **id_cuenta**      | TEXT | FOREIGN KEY → CUENTAS(id_cuenta) | Cuenta sobre la cual se ejecuta la transacción. |
-| **tipo**           | TEXT | CHECK (tipo IN ('deposito','retiro','transferencia','comision')) | Tipo de transacción realizada. |
+| **tipo**           | TEXT | CHECK (tipo IN ('deposito','retiro') | Tipo de transacción realizada. |
 | **monto**          | REAL | CHECK (monto >= 0) | Monto del movimiento. |
 | **fecha_hora**     | TEXT | DEFAULT datetime('now') | Fecha y hora de la transacción. |
 
+- Para las transferencias, se usa un id_transaccion y un id_transferencia. La cuenta de origen que realiza la transferencia hace un "retiro" hacia la cuenta de destino que recibe la transferencia, recibiendo un "depósito".
 
 ### 🧾 TABLA: MENSAJES_PROCESADOS
 Controla los mensajes ya atendidos para asegurar **idempotencia** en la comunicación por RabbitMQ.
@@ -334,7 +336,7 @@ Para transferencias reales, el sistema aplica **doble asiento** (retiro + depós
 
 ```json
 {
-  "type": "Transaction",             // o "Transfer"
+  "type": "Transfer",
   "messageId": "f9b8c3b1-...",
   "fromAccountId": "CU_ORIGEN",
   "toAccountId": "CU_DESTINO",
@@ -349,9 +351,8 @@ Para transferencias reales, el sistema aplica **doble asiento** (retiro + depós
 {
   "ok": true,
   "data": {
-    "transferId": "TFX-2025-0001",
-    "debitTxId": "TR2001",
-    "creditTxId": "TR2002",
+    "idTransaccion": "TX2001",
+    "idTransferencia": "TR0001",
     "fromAccountNewBalance": 2350.00,
     "toAccountNewBalance": 4180.00
   },

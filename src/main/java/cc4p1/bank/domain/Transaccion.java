@@ -7,18 +7,26 @@ import java.time.LocalDateTime;
 
 public record Transaccion(
         String idTransaccion,     // id_transaccion
+        String idTransferencia,   // id_transferencia
         String idCuenta,          // id_cuenta
-        TipoTransaccion tipo,
+        TipoTransaccion tipo,     // deposito o retiro
         BigDecimal monto,
-        LocalDateTime fechaHora
+        LocalDateTime fecha
 ) {
     public static Transaccion from(ResultSet rs) throws SQLException {
+        String rawFecha = rs.getString("fecha");
+        // SQLite guarda datetime('now') como "YYYY-MM-DD HH:MM:SS"
+        LocalDateTime parsedFecha = rawFecha != null
+                ? LocalDateTime.parse(rawFecha.replace(' ', 'T'))
+                : null;
+
         return new Transaccion(
             rs.getString("id_transaccion"),
+            rs.getString("id_transferencia"),
             rs.getString("id_cuenta"),
             TipoTransaccion.from(rs.getString("tipo")),
             rs.getBigDecimal("monto"),
-            LocalDateTime.parse(rs.getString("fecha_hora").replace(' ', 'T'))
+            parsedFecha
         );
     }
 }
