@@ -99,3 +99,369 @@ Controla los mensajes ya atendidos para asegurar **idempotencia** en la comunica
 4. isDone(messageId) - Verificar estado
     - Consulta si el mensaje ya fue procesado completamente
     - Útil para logging o validaciones
+
+## 📬 Contrato de Mensajería — Banco (RabbitMQ)
+
+Definir **cómo el Banco recibe y responde** mensajes en RabbitMQ, y **cómo el Banco consulta a RENIEC**. Estandariza encabezados AMQP, cuerpo JSON, correlación de respuestas e idempotencia.
+
+
+### 0) Convenciones comunes
+
+**Cola de entrada del Banco:** `bank.requests`  
+**Cola de RENIEC (escuchada por RENIEC):** `reniec.verify`  
+**Formato de mensajes:** JSON UTF-8
+
+#### 0.1 Encabezados AMQP (obligatorio en toda petición al Banco)
+- `reply_to`: cola temporal del cliente para recibir la respuesta.
+- `correlation_id`: UUID único por solicitud (para emparejar respuesta).
+- (Opcional) `expiration`: TTL del mensaje si aplica.
+
+#### 0.2 Envoltorio común de **respuesta** del Banco (hacia clientes)
+
+```json
+{
+  "ok": true,
+  "data": { /* resultado */ },
+  "error": null,
+  "correlationId": "UUID-mismo-que-AMQP"
+}
+```
+
+En caso de error:
+
+```json
+{
+  "ok": false,
+  "data": null,
+  "error": { "code": "ENUM_OPCIONAL", "message": "texto legible" },
+  "correlationId": "UUID-mismo-que-AMQP"
+}
+```
+
+> La respuesta **siempre** replica el `correlation_id` en encabezado AMQP **y** en `correlationId` del JSON.
+
+#### 0.3 Idempotencia de operaciones de **escritura**
+
+* Toda petición de escritura incluye `messageId` (UUID) y el Banco lo usa para evitar re-procesar (reintentos/redeliveries).
+* Las operaciones **solo-lectura** pueden omitir `messageId`.
+
+
+### 1) Operaciones del Banco (Cliente → Banco)
+
+#### 1.1 `GetBalance`
+
+**Body (request)**
+
+```json
+{
+  "type": "GetBalance",
+  "accountId": "CU001",
+  "messageId": "opcional-para-lectura"
+}
+```
+
+**Body (response ok)**
+
+```json
+{
+  "ok": true,
+  "data": { "accountId": "CU001", "balance": 2750.00, "currency": "PEN" },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+---
+
+#### 1.2 `GetClientInfo`
+
+**Body (request)**
+
+```json
+{
+  "type": "GetClientInfo",
+  "clientId": "CL001"
+}
+```
+
+**Body (response ok)**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "clientId": "CL001",
+    "dni": "45678912",
+    "nombres": "MARÍA ELENA",
+    "apellidoPat": "GARCÍA",
+    "apellidoMat": "FLORES",
+    "direccion": "Av. Universitaria 1234",
+    "telefono": "999-888-777",
+    "correo": "maria@example.com",
+    "fechaRegistro": "2025-10-27 16:35:10"
+  },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+---
+
+#### 1.3 `Deposit` (💾 escritura, requiere `messageId`)
+
+**Body (request)**
+
+```json
+{
+  "type": "Deposit",
+  "messageId": "a7d9a4f3-...",
+  "accountId": "CU001",
+  "amount": 150.00,
+  "metadata": { "source": "app-mobile" }
+}
+```
+
+**Body (response ok)**
+
+```json
+{
+  "ok": true,
+  "data": { "accountId": "CU001", "newBalance": 2900.00, "txId": "TR1042" },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+---
+
+#### 1.4 `Withdraw` (💾 escritura, requiere `messageId`)
+
+**Body (request)**
+
+```json
+{
+  "type": "Withdraw",
+  "messageId": "7c1b7c54-...",
+  "accountId": "CU001",
+  "amount": 200.00
+}
+```
+
+**Body (response ok)**
+
+```json
+{
+  "ok": true,
+  "data": { "accountId": "CU001", "newBalance": 2700.00, "txId": "TR1043" },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+> Errores frecuentes: `INSUFFICIENT_FUNDS`, `ACCOUNT_NOT_FOUND`, `VALIDATION_ERROR`.
+
+---
+
+#### 1.5 `ListTransactions`
+
+**Body (request)**
+
+```json
+{
+  "type": "ListTransactions",
+  "accountId": "CU001",
+  "from": "2025-10-01",
+  "to": "2025-10-31",
+  "limit": 100,
+  "offset": 0
+}
+```
+
+**Body (response ok)**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "accountId": "CU001",
+    "items": [
+      { "txId": "TR1042", "tipo": "deposito", "monto": 150.00, "fecha": "2025-10-28 12:30:10" },
+      { "txId": "TR1040", "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" }
+    ],
+    "count": 2,
+    "hasMore": false
+  },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+---
+
+#### 1.6 `CreateLoan` (💾 escritura, requiere `messageId` y validación RENIEC)
+
+**Body (request)**
+
+```json
+{
+  "type": "CreateLoan",
+  "messageId": "6f7b2d90-...",
+  "clientId": "CL001",
+  "principal": 7500.00,
+  "currency": "PEN"
+}
+```
+
+**Flujo interno:** el Banco valida primero identidad con RENIEC (ver sección 3).
+**Body (response ok)**
+
+```json
+{
+  "ok": true,
+  "data": { "loanId": "PR0012", "clientId": "CL001", "principal": 7500.00, "status": "activo" },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+---
+
+#### 1.7 `Transaction` (transferencia entre cuentas) — **dos cuentas** (💾 escritura)
+
+Para transferencias reales, el sistema aplica **doble asiento** (retiro + depósito).
+
+**Body (request)**
+
+```json
+{
+  "type": "Transaction",             // o "Transfer"
+  "messageId": "f9b8c3b1-...",
+  "fromAccountId": "CU_ORIGEN",
+  "toAccountId": "CU_DESTINO",
+  "amount": 150.00,
+  "metadata": { "note": "Pago de servicios" }
+}
+```
+
+**Body (response ok)**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "transferId": "TFX-2025-0001",
+    "debitTxId": "TR2001",
+    "creditTxId": "TR2002",
+    "fromAccountNewBalance": 2350.00,
+    "toAccountNewBalance": 4180.00
+  },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+> Errores frecuentes: `ACCOUNT_NOT_FOUND`, `SAME_ACCOUNT`, `INSUFFICIENT_FUNDS`.
+
+---
+
+### 2) Reglas de negocio y validaciones (resumen)
+
+* **amount** `> 0` en escrituras.
+* `from <= to` en `ListTransactions`.
+* `fromAccountId != toAccountId` en transferencias.
+* Idempotencia: **reutilizar el mismo `messageId`** al reintentar; el Banco debe devolver un **no-op exitoso** (misma `data` o una marca de “duplicate”).
+
+---
+
+### 3) Interacción con RENIEC (Banco ↔ RENIEC)
+
+#### 3.1 Banco → RENIEC (request)
+
+**Cola destino:** `reniec.verify`
+**Encabezados AMQP:** (no requiere `reply_to` si se usa RPC tradicional con su propia cola de respuesta; recomendable incluir `correlation_id`)
+**Body**
+
+```json
+{
+  "type": "VerifyIdentity",
+  "dni": "45678912"
+}
+```
+
+#### 3.2 RENIEC → Banco (response)
+
+**Encabezados AMQP:** `correlation_id` = mismo del request del Banco
+**Body (envoltorio común)**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "valid": true,
+    "dni": "45678912",
+    "nombres": "MARÍA ELENA",
+    "apellidoPat": "GARCÍA",
+    "apellidoMat": "FLORES"
+  },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+En caso de no válido o error:
+
+```json
+{
+  "ok": true,
+  "data": { "valid": false, "dni": "45678912" },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+o bien:
+
+```json
+{
+  "ok": false,
+  "data": null,
+  "error": { "code": "RENIEC_UNAVAILABLE", "message": "Timeout o servicio caído" },
+  "correlationId": "..."
+}
+```
+
+**Uso en el Banco:**
+
+* `CreateLoan` (y cualquier operación que requiera identidad) debe:
+
+  1. Enviar `VerifyIdentity` a `reniec.verify`.
+  2. Esperar respuesta (RPC) con **mismo `correlation_id`**.
+  3. Si `data.valid == true`, continuar; si no, responder al cliente con `ok=false` y `error` adecuado.
+
+---
+
+### 4) Códigos de error sugeridos (opcional)
+
+* `ACCOUNT_NOT_FOUND`, `CLIENT_NOT_FOUND`
+* `INSUFFICIENT_FUNDS`
+* `VALIDATION_ERROR` (payload inválido)
+* `DUPLICATE_REQUEST` (idempotencia)
+* `RENIEC_UNAVAILABLE`, `RENIEC_INVALID_ID`
+* `INTERNAL_ERROR`
+
+---
+
+### 5) Ejemplo de cabeceras y flujo (RPC)
+
+1. **Cliente → Banco**
+
+   * AMQP: `reply_to=amq.gen-xyz`, `correlation_id=ab12-...`
+   * Body: `{ "type":"Deposit", "messageId":"...", "accountId":"CU001", "amount":100 }`
+2. **Banco → Cliente**
+
+   * AMQP: `correlation_id=ab12-...`
+   * Body: `{ "ok":true, "data":{...}, "error":null, "correlationId":"ab12-..." }`
+
+> **Regla de oro:** El Banco **siempre** copia el `correlation_id` del request en el **encabezado** de la respuesta y lo refleja en `correlationId` del body.
+
+---
