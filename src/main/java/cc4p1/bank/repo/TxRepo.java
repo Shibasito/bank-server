@@ -72,16 +72,16 @@ public class TxRepo {
    * Atomic two-leg transfer: retiro origen + deposito destino. Throws if
    * insufficient funds.
    */
-  public void transfer(Connection c, String transferId, String debitTxId, String fromAccount, String creditTxId,
+  public void transfer(Connection c, String transferId, String txId, String fromAccount,
       String toAccount, BigDecimal amount,
       AccountRepo accounts) throws SQLException {
     // 1) debit (fails if negative via AccountRepo.changeBalance)
     accounts.changeBalance(c, fromAccount, amount.negate());
-    insertTx(c, debitTxId, transferId, fromAccount, TipoTransaccion.retiro, amount);
+    insertTx(c, txId, transferId, fromAccount, TipoTransaccion.retiro, amount);
 
     // 2) credit
     accounts.changeBalance(c, toAccount, amount);
-    insertTx(c, creditTxId, transferId, toAccount, TipoTransaccion.deposito, amount);
+    insertTx(c, txId, transferId, toAccount, TipoTransaccion.deposito, amount);
   }
 
   /* ===== Helpers ===== */

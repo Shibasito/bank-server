@@ -15,7 +15,7 @@ public class Rabbit implements AutoCloseable {
   }
 
   public void serve(BankService bank) throws Exception {
-    String queue = "bank.requests";
+    String queue = "bank_requests";
     ch.queueDeclare(queue, true, false, false, null);
     ch.basicQos(32);
 

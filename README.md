@@ -287,8 +287,9 @@ En caso de error:
   "data": {
     "accountId": "CU001",
     "items": [
-      { "txId": "TR1042", "tipo": "deposito", "monto": 150.00, "fecha": "2025-10-28 12:30:10" },
-      { "txId": "TR1040", "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" }
+      { "txId": "TX1042", "idTransferencia": null, "tipo": "deposito", "monto": 150.00, "fecha": "2025-10-28 12:30:10" },
+      { "txId": "TX1040", "idTransferencia": null, "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" }
+      { "txId": "TX1051", "idTransferencia": "TR1051", "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" }
     ],
     "count": 2,
     "hasMore": false
@@ -328,7 +329,7 @@ En caso de error:
 
 ---
 
-#### 1.7 `Transaction` (transferencia entre cuentas) — **dos cuentas** (💾 escritura)
+#### 1.7 `Transfer` (transferencia entre cuentas) — **dos cuentas** (💾 escritura)
 
 Para transferencias reales, el sistema aplica **doble asiento** (retiro + depósito).
 
