@@ -32,10 +32,17 @@ public class BankServer {
         var messageRepo = new MessageRepo();
 
         String rabbitHost = System.getenv().getOrDefault("RABBIT_HOST", "localhost");
+        boolean useMockReniec = "true".equalsIgnoreCase(System.getenv().getOrDefault("USE_RENIEC_MOCK", "true"));
 
         // 4) Clientes externos (RENIEC) y mensajería (RabbitMQ)
-        // final ReniecRpcClient reniec = new ReniecRpcClient(rabbitHost);
-        final MockReniecClient reniec = new MockReniecClient(true, 100); // siempre válido con retardo de 100ms
+        final BankService.ReniecClient reniec;
+        if (useMockReniec) {
+            System.out.println("[INFO] Usando MockReniecClient (sin RabbitMQ para RENIEC)");
+            reniec = new MockReniecClient(true, 0);
+        } else {
+            System.out.println("[INFO] Usando ReniecRpcClient (RabbitMQ)");
+            reniec = new ReniecRpcClient(rabbitHost);
+        }
         final Rabbit mq = new Rabbit(rabbitHost);
 
         // 5) Servicio principal del banco
@@ -52,7 +59,10 @@ public class BankServer {
         // 6) Registrar shutdown hook para cerrar recursos ordenadamente
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try { mq.close(); } catch (Exception ignored) {}
-            try { reniec.close(); } catch (Exception ignored) {}
+            // Cerrar Reniec solo si es... cerrable
+            if (reniec instanceof AutoCloseable) {
+                try { ((AutoCloseable) reniec).close(); } catch (Exception ignored) {}
+            }
         }));
 
         // 7) Iniciar consumidor RabbitMQ

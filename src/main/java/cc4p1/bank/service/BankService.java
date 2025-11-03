@@ -124,15 +124,19 @@ public class BankService {
       c.commit();
       List<Map<String, Object>> list = new ArrayList<>();
       for (Transaccion t : items) {
-        list.add(Map.of(
-            "txId", t.idTransaccion(),
-            "idTransferencia", t.idTransferencia(),
-            "tipo", t.tipo().toString(),
-            "monto", t.monto(),
-            "fecha", t.fecha() == null ? null : t.fecha().toString().replace('T', ' ')));
+        java.util.Map<String, Object> it = new java.util.LinkedHashMap<>();
+        it.put("txId", t.idTransaccion());
+        it.put("idTransferencia", t.idTransferencia()); // puede ser null
+        it.put("tipo", t.tipo().toString());
+        it.put("monto", t.monto());
+        it.put("fecha", t.fecha() == null ? null : t.fecha().toString().replace('T', ' '));
+        list.add(it);
       }
-      Map<String, Object> data = Map.of("accountId", accountId, "items", list, "count", list.size(), "hasMore",
-          list.size() == limit);
+      java.util.Map<String, Object> data = new java.util.LinkedHashMap<>();
+      data.put("accountId", accountId);
+      data.put("items", list);
+      data.put("count", list.size());
+      data.put("hasMore", list.size() == limit);
       return ok(data, corrId);
     }
   }
@@ -283,14 +287,25 @@ public class BankService {
   }
 
   private String ok(Object data, String corrId) throws Exception {
-    Map<String, Object> res = Map.of("ok", true, "data", data, "error", null, "correlationId", corrId);
+    // Map.of no permite valores nulos; construir mapa mutable explícito
+    java.util.Map<String, Object> res = new java.util.LinkedHashMap<>();
+    res.put("ok", true);
+    res.put("data", data);
+    res.put("error", null);
+    res.put("correlationId", corrId);
     return om.writeValueAsString(res);
   }
 
   private String error(String msg, String corrId) {
     try {
-      Map<String, Object> res = Map.of("ok", false, "data", null, "error", Map.of("message", msg), "correlationId",
-          corrId);
+      // Evitar Map.of con nulos; usar mapas mutables
+      java.util.Map<String, Object> err = new java.util.LinkedHashMap<>();
+      err.put("message", msg);
+      java.util.Map<String, Object> res = new java.util.LinkedHashMap<>();
+      res.put("ok", false);
+      res.put("data", null);
+      res.put("error", err);
+      res.put("correlationId", corrId);
       return om.writeValueAsString(res);
     } catch (Exception e) {
       return "{\"ok\":false,\"error\":{\"message\":\"" + msg + "\"}}";

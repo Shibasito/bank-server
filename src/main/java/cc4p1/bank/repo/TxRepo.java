@@ -81,7 +81,9 @@ public class TxRepo {
 
     // 2) credit
     accounts.changeBalance(c, toAccount, amount);
-    insertTx(c, txId, transferId, toAccount, TipoTransaccion.deposito, amount);
+    // usar un id de transacción distinto para la segunda pata
+    String txId2 = cc4p1.bank.util.Ids.tx();
+    insertTx(c, txId2, transferId, toAccount, TipoTransaccion.deposito, amount);
   }
 
   /* ===== Helpers ===== */
