@@ -17,6 +17,7 @@ Contiene la información general de los clientes registrados en el banco.
 | **direccion**    | TEXT | — | Dirección del domicilio. |
 | **telefono**     | TEXT | — | Teléfono de contacto. |
 | **correo**       | TEXT | — | Correo electrónico. |
+| **password**     | TEXT | NOT NULL | Contraseña en texto plano (solo entorno local). |
 | **fecha_registro** | TEXT | DEFAULT datetime('now') | Fecha y hora de registro en el sistema. |
 
 
@@ -54,7 +55,7 @@ Almacena todas las operaciones realizadas sobre las cuentas.
 | **id_cuenta**      | TEXT | FOREIGN KEY → CUENTAS(id_cuenta) | Cuenta sobre la cual se ejecuta la transacción. |
 | **tipo**           | TEXT | CHECK (tipo IN ('deposito','retiro') | Tipo de transacción realizada. |
 | **monto**          | REAL | CHECK (monto >= 0) | Monto del movimiento. |
-| **fecha_hora**     | TEXT | DEFAULT datetime('now') | Fecha y hora de la transacción. |
+| **fecha**     | TEXT | DEFAULT datetime('now') | Fecha y hora de la transacción. |
 
 - Para las transferencias, se usa un id_transaccion y un id_transferencia. La cuenta de origen que realiza la transferencia hace un "retiro" hacia la cuenta de destino que recibe la transferencia, recibiendo un "depósito".
 
@@ -365,6 +366,105 @@ Para transferencias reales, el sistema aplica **doble asiento** (retiro + depós
 > Errores frecuentes: `ACCOUNT_NOT_FOUND`, `SAME_ACCOUNT`, `INSUFFICIENT_FUNDS`.
 
 ---
+
+#### 1.8 `Login` (autenticación)
+
+Compatibilidad de entradas: se aceptan tanto `type` como `operationType` (cliente web).
+
+Body (request, estilo cliente web):
+
+```json
+{
+  "operationType": "login",
+  "payload": { "usuario": "45678912", "password": "secret1" }
+}
+```
+
+Body (request, estilo servicio):
+
+```json
+{ "type": "Login", "dni": "45678912", "password": "secret1" }
+```
+
+Body (response ok):
+
+```json
+{
+  "ok": true,
+  "status": "ok",
+  "data": {
+    "clientId": "CL001",
+    "dni": "45678912",
+    "accountId": "CU001",
+    "balance": 2500.00
+  },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+- [ ] TODO: Adaptar cliente a respuestas del servidor
+
+> Errores frecuentes: `INVALID_CREDENTIALS`.
+
+---
+
+#### 1.9 `Register` (registro de cliente + cuenta) — 💾 escritura, idempotente
+
+Compatibilidad de entradas: `type` o `operationType` con `payload`.
+
+Body (request, estilo cliente web):
+
+```json
+{
+  "operationType": "register",
+  "messageId": "uuid-123",
+  "payload": {
+    "usuario": "87654321",     // alias de dni
+    "password": "mypass",
+    "nombres": "ANA",
+    "apellidoPat": "PEREZ",
+    "apellidoMat": "ROJAS",
+    "saldo": 1000
+  }
+}
+```
+
+Body (request, estilo servicio):
+
+```json
+{
+  "type": "Register",
+  "messageId": "uuid-123",
+  "dni": "87654321",
+  "password": "mypass",
+  "nombres": "ANA",
+  "apellidoPat": "PEREZ",
+  "apellidoMat": "ROJAS",
+  "saldo": "1000.00"
+}
+```
+
+Body (response ok):
+
+```json
+{
+  "ok": true,
+  "status": "ok",
+  "data": {
+    "clientId": "CL-xxxxxx",
+    "accountId": "CU-xxxxxx",
+    "initialBalance": 1000
+  },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+> Notas:
+> - Requiere `messageId` para idempotencia (reintentos seguros).
+> - Falla con `CLIENT_ALREADY_EXISTS` si el DNI ya está registrado.
+
 
 ### 2) Reglas de negocio y validaciones (resumen)
 

@@ -41,17 +41,27 @@ public class Rabbit implements AutoCloseable {
       String replyTo = delivery.getProperties().getReplyTo();
       String body = new String(delivery.getBody());
 
+      // Log: mensaje recibido
+      System.out.printf(" [>] Received | corrId=%s | replyTo=%s | size=%d | body=%s%n",
+          corrId, replyTo, body == null ? 0 : body.length(), body);
+
       // Lógica de negocio
       String response = bank.handle(body, corrId);
 
       // Propiedades del mensaje de respuesta
       AMQP.BasicProperties props = new AMQP.BasicProperties.Builder()
           .correlationId(corrId)
+          .contentType("application/json")
           .build();
+
+      // Log: mensaje a enviar
+      System.out.printf(" [<] Sending  | corrId=%s | to=%s | size=%d | body=%s%n",
+          corrId, replyTo, response == null ? 0 : response.length(), response);
 
       // Publicar de vuelta en la cola de respuesta del cliente
       ch.basicPublish("", replyTo, props, response.getBytes());
       ch.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
+      System.out.printf(" [✓] Acked    | corrId=%s%n", corrId);
     };
 
     // Consumir de la cola bank_queue
@@ -72,6 +82,11 @@ public class Rabbit implements AutoCloseable {
         .correlationId(correlationId)
         .replyTo(replyQueue)
         .build();
+
+    // Log: envío a RENIEC
+    System.out.printf(" [~] RENIEC   | exchange=%s | key=%s | corrId=%s | replyTo=%s | size=%d | body=%s%n",
+        reniecExchange, reniecRoutingKey, correlationId, replyQueue,
+        messageJson == null ? 0 : messageJson.length(), messageJson);
 
     ch.basicPublish(reniecExchange, reniecRoutingKey, props, messageJson.getBytes());
     return correlationId;

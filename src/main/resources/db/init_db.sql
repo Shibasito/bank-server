@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS CLIENTES (
     nombres        TEXT NOT NULL,
     apellido_pat  TEXT NOT NULL,
     apellido_mat  TEXT NOT NULL,
+    password       TEXT NOT NULL,                -- Para autenticación (texto plano en entorno local)
     direccion      TEXT,
     telefono       TEXT,
     correo         TEXT,
@@ -69,10 +70,10 @@ CREATE INDEX IF NOT EXISTS idx_cuentas_cliente ON CUENTAS(id_cliente);
 CREATE INDEX IF NOT EXISTS idx_prestamos_cliente ON PRESTAMOS(id_cliente);
 CREATE INDEX IF NOT EXISTS idx_transacciones_cuenta_fecha ON TRANSACCIONES(id_cuenta, fecha DESC);
 
-INSERT INTO CLIENTES(id_cliente, dni, nombres, apellido_pat, apellido_mat, direccion)
+INSERT INTO CLIENTES(id_cliente, dni, nombres, apellido_pat, apellido_mat, password, direccion)
 VALUES
-  ('CL001','45678912','MARÍA ELENA','GARCÍA','FLORES','Av. Universitaria 1234'),
-  ('CL002','12345678','JUAN CARLOS','RAMÍREZ','QUISPE','Av. La Molina 5678');
+    ('CL001','45678912','MARÍA ELENA','GARCÍA','FLORES','secret1','Av. Universitaria 1234'),
+    ('CL002','12345678','JUAN CARLOS','RAMÍREZ','QUISPE','secret2','Av. La Molina 5678');
 
 INSERT INTO CUENTAS(id_cuenta, id_cliente, saldo)
 VALUES ('CU001','CL001',2500.00);

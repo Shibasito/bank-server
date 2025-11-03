@@ -42,7 +42,13 @@ public class BankService {
   public String handle(String body, String corrId) {
     try {
       JsonNode r = om.readTree(body);
-      String type = reqStr(r, "type");
+      // Compat: aceptar tanto {type} como {operationType}
+      String type = r.hasNonNull("type") ? r.get("type").asText()
+          : (r.hasNonNull("operationType") ? r.get("operationType").asText() : null);
+      if (type == null) {
+        return error("MISSING_type", corrId);
+      }
+  // Normalizar alias en minúsculas comunes (no requerido por ahora)
       switch (type) {
         case "GetBalance" -> {
           return handleGetBalance(r, corrId);
@@ -64,6 +70,13 @@ public class BankService {
         }
         case "CreateLoan" -> {
           return handleCreateLoan(r, corrId);
+        }
+        // Extensiones para el cliente web (alias en minúsculas)
+        case "login", "Login" -> {
+          return handleLogin(r, corrId);
+        }
+        case "register", "Register" -> {
+          return handleRegister(r, corrId);
         }
         default -> {
           return error("UNKNOWN_TYPE: " + type, corrId);
@@ -142,6 +155,78 @@ public class BankService {
   }
 
   /* ======================= WRITES (idempotent) ======================= */
+
+  /** Login por DNI y password (solo lectura; no requiere idempotencia). */
+  private String handleLogin(JsonNode r, String corrId) throws Exception {
+    JsonNode src = r.has("payload") ? r.get("payload") : r;
+    String dni = src.hasNonNull("dni") ? src.get("dni").asText() : reqStr(src, "usuario");
+    String password = reqStr(src, "password");
+    try (Connection c = sqlite.get()) {
+      var cli = clientRepo.authenticate(c, dni, password);
+      c.commit();
+      if (cli == null) return error("INVALID_CREDENTIALS", corrId);
+      var acct = accountRepo.findAnyByClient(c, cli.idCliente());
+      Map<String, Object> data = new LinkedHashMap<>();
+      data.put("clientId", cli.idCliente());
+      data.put("dni", cli.dni());
+      if (acct != null) {
+        data.put("accountId", acct.idCuenta());
+        data.put("balance", acct.saldo());
+      }
+      // Agregar banderita de compatibilidad
+      data.put("status", "ok");
+      return ok(data, corrId);
+    }
+  }
+
+  /** Registro de cliente + creación de cuenta vacía. Requiere idempotencia. */
+  private String handleRegister(JsonNode r, String corrId) throws Exception {
+    JsonNode p = r.has("payload") ? r.get("payload") : r;
+    String msgId = optStr(r, "messageId", optStr(p, "messageId", null));
+    if (msgId == null) throw new IllegalArgumentException("MISSING_messageId");
+
+  String dni = p.hasNonNull("dni") ? p.get("dni").asText() : reqStr(p, "usuario");
+    String password = reqStr(p, "password");
+    String nombres = optStr(p, "nombres", "");
+    String apePat = optStr(p, "apellidoPat", "");
+    String apeMat = optStr(p, "apellidoMat", "");
+    String direccion = optStr(p, "direccion", null);
+    String telefono = optStr(p, "telefono", null);
+    String correo = optStr(p, "correo", null);
+    java.math.BigDecimal initial = p.hasNonNull("saldo") ? new java.math.BigDecimal(p.get("saldo").asText()) : java.math.BigDecimal.ZERO;
+
+    try (Connection c = sqlite.get()) {
+      if (messageRepo.alreadyProcessed(c, msgId)) {
+        c.rollback();
+        return ok(Map.of("duplicate", true), corrId);
+      }
+
+      // Unicidad por DNI
+      if (clientRepo.findByDni(c, dni) != null) {
+        c.rollback();
+        return error("CLIENT_ALREADY_EXISTS", corrId);
+      }
+
+      String clientId = cc4p1.bank.util.Ids.client();
+      var cli = new cc4p1.bank.domain.Cliente(clientId, dni, nombres, apePat, apeMat, direccion, telefono, correo, java.time.LocalDateTime.now());
+      clientRepo.insert(c, cli, password);
+
+      // Crear cuenta con saldo inicial
+      String accountId = cc4p1.bank.util.Ids.account();
+      var cu = new cc4p1.bank.domain.Cuenta(accountId, clientId, initial, java.time.LocalDate.now());
+      accountRepo.insert(c, cu);
+
+      messageRepo.markProcessed(c, msgId);
+      c.commit();
+      Map<String, Object> data = Map.of(
+        "clientId", clientId,
+        "accountId", accountId,
+        "initialBalance", initial,
+        "status", "ok"
+      );
+      return ok(data, corrId);
+    }
+  }
 
   private String handleDeposit(JsonNode r, String corrId) throws Exception {
     String msgId = reqStr(r, "messageId");
@@ -290,6 +375,7 @@ public class BankService {
     // Map.of no permite valores nulos; construir mapa mutable explícito
     java.util.Map<String, Object> res = new java.util.LinkedHashMap<>();
     res.put("ok", true);
+    res.put("status", "ok"); // compat con algunos clientes web
     res.put("data", data);
     res.put("error", null);
     res.put("correlationId", corrId);
@@ -303,6 +389,7 @@ public class BankService {
       err.put("message", msg);
       java.util.Map<String, Object> res = new java.util.LinkedHashMap<>();
       res.put("ok", false);
+  res.put("status", "error"); // compat con algunos clientes web
       res.put("data", null);
       res.put("error", err);
       res.put("correlationId", corrId);

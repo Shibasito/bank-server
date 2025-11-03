@@ -51,5 +51,21 @@ public class AccountRepo {
       if (n != 1) throw new SQLException("INSUFFICIENT_FUNDS or ACCOUNT_NOT_FOUND");
     }
   }
+
+  /** Obtiene la primera cuenta de un cliente (o null si no tiene). */
+  public Cuenta findAnyByClient(Connection c, String clientId) throws SQLException {
+    String sql = "SELECT * FROM CUENTAS WHERE id_cliente=? ORDER BY fecha_apertura ASC LIMIT 1";
+    try (PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setString(1, clientId);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? new Cuenta(
+            rs.getString("id_cuenta"),
+            rs.getString("id_cliente"),
+            rs.getBigDecimal("saldo"),
+            java.time.LocalDate.parse(rs.getString("fecha_apertura"))
+        ) : null;
+      }
+    }
+  }
 }
 

@@ -27,9 +27,14 @@ public class ClientRepo {
   }
 
   public void insert(Connection c, Cliente cli) throws SQLException {
+    throw new UnsupportedOperationException("Use insert(Connection, Cliente, String password)");
+  }
+
+  /** Inserta un cliente con contraseña en texto plano (para entorno local). */
+  public void insert(Connection c, Cliente cli, String password) throws SQLException {
     String sql = """
-      INSERT INTO CLIENTES(id_cliente,dni,nombres,apellido_pat,apellido_mat,direccion,telefono,correo,fecha_registro)
-      VALUES(?,?,?,?,?,?,?,?,datetime('now'))
+      INSERT INTO CLIENTES(id_cliente,dni,nombres,apellido_pat,apellido_mat,password,direccion,telefono,correo,fecha_registro)
+      VALUES(?,?,?,?,?,?,?, ?, ?, datetime('now'))
       """;
     try (PreparedStatement ps = c.prepareStatement(sql)) {
       ps.setString(1, cli.idCliente());
@@ -37,10 +42,34 @@ public class ClientRepo {
       ps.setString(3, cli.nombres());
       ps.setString(4, cli.apellidoPat());
       ps.setString(5, cli.apellidoMat());
-      ps.setString(6, cli.direccion());
-      ps.setString(7, cli.telefono());
-      ps.setString(8, cli.correo());
+      ps.setString(6, password);
+      ps.setString(7, cli.direccion());
+      ps.setString(8, cli.telefono());
+      ps.setString(9, cli.correo());
       ps.executeUpdate();
+    }
+  }
+
+  /** Busca un cliente por DNI. */
+  public Cliente findByDni(Connection c, String dni) throws SQLException {
+    String sql = "SELECT * FROM CLIENTES WHERE dni=?";
+    try (PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setString(1, dni);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? Cliente.from(rs) : null;
+      }
+    }
+  }
+
+  /** Autentica por dni y password; devuelve el cliente si coincide, null si no. */
+  public Cliente authenticate(Connection c, String dni, String password) throws SQLException {
+    String sql = "SELECT * FROM CLIENTES WHERE dni=? AND password=?";
+    try (PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setString(1, dni);
+      ps.setString(2, password);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next() ? Cliente.from(rs) : null;
+      }
     }
   }
 }
