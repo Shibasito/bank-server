@@ -394,6 +394,7 @@ Body (response ok):
   "status": "ok",
   "data": {
     "clientId": "CL001",
+    "clienteId": "CL001",
     "dni": "45678912",
     "accountId": "CU001",
     "balance": 2500.00
