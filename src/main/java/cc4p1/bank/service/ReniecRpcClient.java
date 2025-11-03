@@ -16,6 +16,8 @@ public final class ReniecRpcClient implements BankService.ReniecClient, AutoClos
 
   private static final String EXCHANGE = "rabbit_exchange";   // direct exchange shared
   private static final String ROUTING_KEY = "reniec_operation";
+  private static final String USER = "admin";
+  private static final String PASSWORD = "admin";
 
   private final Connection conn;
   private final Channel ch;
@@ -24,6 +26,8 @@ public final class ReniecRpcClient implements BankService.ReniecClient, AutoClos
   public ReniecRpcClient(String host) throws Exception {
     ConnectionFactory f = new ConnectionFactory();
     f.setHost(host);
+    f.setUsername(USER);
+    f.setPassword(PASSWORD);
     this.conn = f.newConnection();
     this.ch = conn.createChannel();
     // asegurar que el intercambio exista

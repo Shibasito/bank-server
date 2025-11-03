@@ -81,4 +81,4 @@ INSERT INTO PRESTAMOS(id_prestamo, id_cliente, monto_inicial, monto_pendiente, e
 VALUES ('PR001','CL001',10000.00,8000.00,'activo');
 
 INSERT INTO TRANSACCIONES(id_transaccion, id_cuenta, tipo, monto)
-VALUES ('TR001','CU001','deposito',500.00);
+VALUES ('TX001','CU001','deposito',500.00);

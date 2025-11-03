@@ -10,10 +10,14 @@ public class Rabbit implements AutoCloseable {
   private static final String BANK_EXCHANGE = "rabbit_exchange";
   private static final String BANK_QUEUE = "bank_queue";
   private static final String BANK_ROUTING_KEY = "bank_operation";
+  private static final String USER = "admin";
+  private static final String PASSWORD = "admin";
 
   public Rabbit(String host) throws Exception {
     ConnectionFactory f = new ConnectionFactory();
     f.setHost(host);
+    f.setUsername(USER);
+    f.setPassword(PASSWORD);
     this.conn = f.newConnection();
     this.ch = conn.createChannel();
   }

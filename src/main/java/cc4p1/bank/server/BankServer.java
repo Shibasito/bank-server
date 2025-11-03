@@ -22,7 +22,7 @@ public class BankServer {
         SQLite sqlite = new SQLite("data/bank.db");
 
         // 2) Inicializar esquema si hace falta
-    sqlite.initializeIfNeeded("/db/init_db.sql");
+        sqlite.initializeIfNeeded("/db/init_db.sql");
 
         // 3) Dependencias
         var clientRepo = new ClientRepo();
@@ -34,6 +34,7 @@ public class BankServer {
         String rabbitHost = System.getenv().getOrDefault("RABBIT_HOST", "localhost");
 
         // 4) Clientes externos (RENIEC) y mensajería (RabbitMQ)
+        // final ReniecRpcClient reniec = new ReniecRpcClient(rabbitHost);
         final MockReniecClient reniec = new MockReniecClient(true, 100); // siempre válido con retardo de 100ms
         final Rabbit mq = new Rabbit(rabbitHost);
 
