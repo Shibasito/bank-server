@@ -168,6 +168,8 @@ public class BankService {
       var acct = accountRepo.findAnyByClient(c, cli.idCliente());
       Map<String, Object> data = new LinkedHashMap<>();
       data.put("clientId", cli.idCliente());
+      // Alias para clientes web en español
+      data.put("clienteId", cli.idCliente());
       data.put("dni", cli.dni());
       if (acct != null) {
         data.put("accountId", acct.idCuenta());
@@ -218,12 +220,13 @@ public class BankService {
 
       messageRepo.markProcessed(c, msgId);
       c.commit();
-      Map<String, Object> data = Map.of(
-        "clientId", clientId,
-        "accountId", accountId,
-        "initialBalance", initial,
-        "status", "ok"
-      );
+      java.util.Map<String, Object> data = new java.util.LinkedHashMap<>();
+      data.put("clientId", clientId);
+      // Alias para clientes web en español
+      data.put("clienteId", clientId);
+      data.put("accountId", accountId);
+      data.put("initialBalance", initial);
+      data.put("status", "ok");
       return ok(data, corrId);
     }
   }
