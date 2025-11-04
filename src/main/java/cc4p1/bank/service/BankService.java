@@ -122,8 +122,12 @@ public class BankService {
       data.put("clientId", cli.idCliente());
       data.put("dni", cli.dni());
       data.put("nombres", cli.nombres());
-      data.put("apellidoPat", cli.apellidoPat());
-      data.put("apellidoMat", cli.apellidoMat());
+      // Combine apellidos
+      String apellidos = cli.apellidoPat();
+      if (cli.apellidoMat() != null && !cli.apellidoMat().isEmpty()) {
+        apellidos = apellidos + " " + cli.apellidoMat();
+      }
+      data.put("apellidos", apellidos);
       data.put("direccion", cli.direccion());
       data.put("telefono", cli.telefono());
       data.put("correo", cli.correo());

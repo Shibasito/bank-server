@@ -93,8 +93,7 @@ class BankServiceTest {
     assertEquals("CL001", data.path("clientId").asText());
     assertEquals("45678912", data.path("dni").asText());
     assertEquals("MARÍA ELENA", data.path("nombres").asText());
-    assertEquals("GARCÍA", data.path("apellidoPat").asText());
-    assertEquals("FLORES", data.path("apellidoMat").asText());
+    assertEquals("GARCÍA FLORES", data.path("apellidos").asText());
     assertEquals("Av. Universitaria 1234", data.path("direccion").asText());
     assertNotNull(data.get("fechaRegistro"));
     
