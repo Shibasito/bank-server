@@ -108,9 +108,15 @@ public class BankService {
     String clientId = reqStr(r, "clientId");
     try (Connection c = sqlite.get()) {
       Cliente cli = clientRepo.findById(c, clientId);
-      c.commit();
-      if (cli == null)
+      if (cli == null) {
+        c.commit();
         return error("CLIENT_NOT_FOUND", corrId);
+      }
+      
+      // Get all accounts for this client
+      List<Cuenta> accounts = accountRepo.findAllByClient(c, clientId);
+      c.commit();
+      
       // Use LinkedHashMap to allow null values
       Map<String, Object> data = new LinkedHashMap<>();
       data.put("clientId", cli.idCliente());
@@ -122,6 +128,18 @@ public class BankService {
       data.put("telefono", cli.telefono());
       data.put("correo", cli.correo());
       data.put("fechaRegistro", String.valueOf(cli.fechaRegistro()).replace('T', ' '));
+      
+      List<Map<String, Object>> accountsList = new ArrayList<>();
+      for (Cuenta account : accounts) {
+        Map<String, Object> accountInfo = new LinkedHashMap<>();
+        accountInfo.put("accountId", account.idCuenta());
+        accountInfo.put("balance", account.saldo());
+        accountInfo.put("fechaApertura", account.fechaApertura().toString());
+        accountsList.add(accountInfo);
+      }
+      data.put("accounts", accountsList);
+      data.put("totalAccounts", accountsList.size());
+      
       return ok(data, corrId);
     }
   }

@@ -97,6 +97,19 @@ class BankServiceTest {
     assertEquals("FLORES", data.path("apellidoMat").asText());
     assertEquals("Av. Universitaria 1234", data.path("direccion").asText());
     assertNotNull(data.get("fechaRegistro"));
+    
+    // Verify accounts information
+    assertTrue(data.has("accounts"));
+    assertTrue(data.has("totalAccounts"));
+    JsonNode accounts = data.get("accounts");
+    assertTrue(accounts.isArray());
+    assertEquals(1, data.path("totalAccounts").asInt());
+    
+    // Verify first account (CU001)
+    JsonNode firstAccount = accounts.get(0);
+    assertEquals("CU001", firstAccount.path("accountId").asText());
+    assertEquals(2500.00, firstAccount.path("balance").asDouble(), 0.001);
+    assertNotNull(firstAccount.get("fechaApertura"));
   }
 
   @Test
@@ -107,6 +120,37 @@ class BankServiceTest {
     ));
     assertFalse(res.get("ok").asBoolean());
     assertEquals("CLIENT_NOT_FOUND", res.path("error").path("message").asText());
+  }
+
+  @Test
+  void getClientInfo_multipleAccounts_ok() throws Exception {
+    try (Connection c = sqlite.get()) {
+      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU002", "CL001", new BigDecimal("1500.00"), java.time.LocalDate.now()));
+      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU003", "CL001", new BigDecimal("3000.00"), java.time.LocalDate.now()));
+      c.commit();
+    }
+
+    JsonNode res = call(Map.of(
+        "type", "GetClientInfo",
+        "clientId", "CL001"
+    ));
+    assertTrue(res.get("ok").asBoolean());
+    JsonNode data = res.path("data");
+    
+    assertEquals(3, data.path("totalAccounts").asInt());
+    JsonNode accounts = data.get("accounts");
+    assertEquals(3, accounts.size());
+    
+    boolean hasCU001 = false, hasCU002 = false, hasCU003 = false;
+    for (int i = 0; i < accounts.size(); i++) {
+      String accountId = accounts.get(i).path("accountId").asText();
+      if ("CU001".equals(accountId)) hasCU001 = true;
+      if ("CU002".equals(accountId)) hasCU002 = true;
+      if ("CU003".equals(accountId)) hasCU003 = true;
+    }
+    assertTrue(hasCU001);
+    assertTrue(hasCU002);
+    assertTrue(hasCU003);
   }
 
   @Test

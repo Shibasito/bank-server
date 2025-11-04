@@ -192,6 +192,7 @@ En caso de error:
 ```json
 {
   "ok": true,
+  "status": "ok",
   "data": {
     "clientId": "CL001",
     "dni": "45678912",
@@ -201,12 +202,27 @@ En caso de error:
     "direccion": "Av. Universitaria 1234",
     "telefono": "999-888-777",
     "correo": "maria@example.com",
-    "fechaRegistro": "2025-10-27 16:35:10"
+    "fechaRegistro": "2025-10-27 16:35:10",
+    "accounts": [
+      {
+        "accountId": "CU001",
+        "balance": 2500.00,
+        "fechaApertura": "2025-10-15"
+      },
+      {
+        "accountId": "CU002",
+        "balance": 1500.00,
+        "fechaApertura": "2025-10-20"
+      }
+    ],
+    "totalAccounts": 2
   },
   "error": null,
   "correlationId": "..."
 }
 ```
+
+> **Nota:** La respuesta incluye todas las cuentas asociadas al cliente con sus saldos actuales.
 
 ---
 

@@ -67,5 +67,25 @@ public class AccountRepo {
       }
     }
   }
+
+  /** Obtiene todas las cuentas de un cliente. */
+  public java.util.List<Cuenta> findAllByClient(Connection c, String clientId) throws SQLException {
+    String sql = "SELECT * FROM CUENTAS WHERE id_cliente=? ORDER BY fecha_apertura ASC";
+    java.util.List<Cuenta> accounts = new java.util.ArrayList<>();
+    try (PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setString(1, clientId);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          accounts.add(new Cuenta(
+              rs.getString("id_cuenta"),
+              rs.getString("id_cliente"),
+              rs.getBigDecimal("saldo"),
+              java.time.LocalDate.parse(rs.getString("fecha_apertura"))
+          ));
+        }
+      }
+    }
+    return accounts;
+  }
 }
 
