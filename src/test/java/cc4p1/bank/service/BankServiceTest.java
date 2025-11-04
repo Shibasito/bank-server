@@ -253,7 +253,7 @@ class BankServiceTest {
 
   @Test
   void listTransactions_after_operations_has_items() throws Exception {
-    // perform two ops
+    // perform two ops: +50, -25 => final balance should be 2500 + 50 - 25 = 2525
     call(Map.of("type", "Deposit", "messageId", "msg-6", "accountId", "CU001", "amount", "50.00"));
     call(Map.of("type", "Withdraw", "messageId", "msg-7", "accountId", "CU001", "amount", "25.00"));
 
@@ -269,7 +269,13 @@ class BankServiceTest {
       System.out.println("DEBUG ListTransactions response: " + res.toPrettyString());
     }
     assertTrue(res.get("ok").asBoolean());
-    JsonNode items = res.path("data").path("items");
+    JsonNode data = res.path("data");
+    
+    // Verify current balance is included
+    assertTrue(data.has("currentBalance"));
+    assertEquals(2525.00, data.path("currentBalance").asDouble(), 0.001);
+    
+    JsonNode items = data.path("items");
     assertTrue(items.isArray());
     assertTrue(items.size() >= 2);
     JsonNode first = items.get(0);
@@ -296,5 +302,19 @@ class BankServiceTest {
       c.commit();
       assertEquals(0, cu.saldo().compareTo(new BigDecimal("3500.00")));
     }
+  }
+
+  @Test
+  void listTransactions_nonExistentAccount_error() throws Exception {
+    JsonNode res = call(Map.of(
+        "type", "ListTransactions",
+        "accountId", "CU999",
+        "from", "2000-01-01",
+        "to", "2100-01-01",
+        "limit", 100,
+        "offset", 0
+    ));
+    assertFalse(res.get("ok").asBoolean());
+    assertEquals("ACCOUNT_NOT_FOUND", res.path("error").path("message").asText());
   }
 }

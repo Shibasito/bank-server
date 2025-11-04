@@ -152,6 +152,13 @@ public class BankService {
     int offset = optInt(r, "offset", 0);
 
     try (Connection c = sqlite.get()) {
+      // Get account info for balance
+      Cuenta cuenta = accountRepo.findById(c, accountId);
+      if (cuenta == null) {
+        c.commit();
+        return error("ACCOUNT_NOT_FOUND", corrId);
+      }
+      
       List<Transaccion> items = txRepo.listByAccountAndDate(c, accountId, from, to, limit, offset);
       c.commit();
       List<Map<String, Object>> list = new ArrayList<>();
@@ -166,6 +173,7 @@ public class BankService {
       }
       java.util.Map<String, Object> data = new java.util.LinkedHashMap<>();
       data.put("accountId", accountId);
+      data.put("currentBalance", cuenta.saldo());
       data.put("items", list);
       data.put("count", list.size());
       data.put("hasMore", list.size() == limit);

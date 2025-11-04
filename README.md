@@ -301,20 +301,24 @@ En caso de error:
 ```json
 {
   "ok": true,
+  "status": "ok",
   "data": {
     "accountId": "CU001",
+    "currentBalance": 2750.00,
     "items": [
       { "txId": "TX1042", "idTransferencia": null, "tipo": "deposito", "monto": 150.00, "fecha": "2025-10-28 12:30:10" },
-      { "txId": "TX1040", "idTransferencia": null, "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" }
+      { "txId": "TX1040", "idTransferencia": null, "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" },
       { "txId": "TX1051", "idTransferencia": "TR1051", "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" }
     ],
-    "count": 2,
+    "count": 3,
     "hasMore": false
   },
   "error": null,
   "correlationId": "..."
 }
 ```
+
+> **Nota:** La respuesta incluye el saldo actual de la cuenta (`currentBalance`) al momento de la consulta.
 
 ---
 
