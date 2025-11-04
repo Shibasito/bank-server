@@ -37,18 +37,27 @@ public class AccountRepo {
 
   /** Fails if new balance would be negative. */
   public void changeBalance(Connection c, String accountId, BigDecimal delta) throws SQLException {
+    // First, check if account exists
+    Cuenta account = findById(c, accountId);
+    if (account == null) {
+      throw new SQLException("ACCOUNT_NOT_FOUND");
+    }
+    
+    // Then check if balance would be sufficient
+    if (account.saldo().add(delta).compareTo(BigDecimal.ZERO) < 0) {
+      throw new SQLException("INSUFFICIENT_FUNDS");
+    }
+    
+    // Perform the update
     String sql = """
       UPDATE CUENTAS
          SET saldo = saldo + ?
        WHERE id_cuenta = ?
-         AND saldo + ? >= 0
       """;
     try (PreparedStatement ps = c.prepareStatement(sql)) {
       ps.setBigDecimal(1, delta);
       ps.setString(2, accountId);
-      ps.setBigDecimal(3, delta);
-      int n = ps.executeUpdate();
-      if (n != 1) throw new SQLException("INSUFFICIENT_FUNDS or ACCOUNT_NOT_FOUND");
+      ps.executeUpdate();
     }
   }
 
