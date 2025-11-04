@@ -357,14 +357,25 @@ public class BankService {
         return error("CLIENT_NOT_FOUND", corrId);
       }
 
-      // 2) RENIEC validation (RPC); fail if not valid
+      // 2) Validate account exists and belongs to client
+      var account = accountRepo.findById(c, accountId);
+      if (account == null) {
+        c.rollback();
+        return error("ACCOUNT_NOT_FOUND", corrId);
+      }
+      if (!account.idCliente().equals(clientId)) {
+        c.rollback();
+        return error("ACCOUNT_NOT_OWNED_BY_CLIENT", corrId);
+      }
+
+      // 3) RENIEC validation (RPC); fail if not valid
       var v = reniec.verify(cli.dni()); // should throw or return a struct {valid, ...}
       if (!v.valid()) {
         c.rollback();
         return error("RENIEC_INVALID_ID", corrId);
       }
 
-      // 3) Create loan and credit account
+      // 4) Create loan and credit account
       String loanId = Ids.loan();
       loanRepo.createAndCredit(c, loanId, clientId, accountId, principal, txRepo, accountRepo);
 

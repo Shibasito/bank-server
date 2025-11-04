@@ -103,6 +103,8 @@ Controla los mensajes ya atendidos para asegurar **idempotencia** en la comunica
     - Consulta si el mensaje ya fue procesado completamente
     - Útil para logging o validaciones
 
+Las peticiones de escritura, como crear préstamos o transferencias, requieren `messageId` establecido por el cliente.
+
 ## 📬 Contrato de Mensajería — Banco (RabbitMQ)
 
 Definir **cómo el Banco recibe y responde** mensajes en RabbitMQ, y **cómo el Banco consulta a RENIEC**. Estandariza encabezados AMQP, cuerpo JSON, correlación de respuestas e idempotencia.
@@ -330,12 +332,19 @@ En caso de error:
   "type": "CreateLoan",
   "messageId": "6f7b2d90-...",
   "clientId": "CL001",
-  "principal": 7500.00,
-  "currency": "PEN"
+  "accountId": "CU001",
+  "principal": 7500.00
 }
 ```
 
-**Flujo interno:** el Banco valida primero identidad con RENIEC (ver sección 3).
+**Validaciones:**
+1. Cliente existe (`CLIENT_NOT_FOUND`)
+2. Cuenta existe (`ACCOUNT_NOT_FOUND`)
+3. Cuenta pertenece al cliente (`ACCOUNT_NOT_OWNED_BY_CLIENT`)
+4. Identidad válida en RENIEC (`RENIEC_INVALID_ID`)
+
+**Flujo interno:** el Banco valida primero la cuenta y luego la identidad con RENIEC (ver sección 3).
+
 **Body (response ok)**
 
 ```json

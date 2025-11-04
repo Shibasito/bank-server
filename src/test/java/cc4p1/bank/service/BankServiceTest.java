@@ -316,4 +316,37 @@ class BankServiceTest {
     assertFalse(res.get("ok").asBoolean());
     assertEquals("ACCOUNT_NOT_FOUND", res.path("error").path("message").asText());
   }
+
+  @Test
+  void createLoan_nonExistentAccount_error() throws Exception {
+    JsonNode res = call(Map.of(
+        "type", "CreateLoan",
+        "messageId", "msg-9",
+        "clientId", "CL001",
+        "accountId", "CU999", // non-existent account
+        "principal", "1000.00"
+    ));
+    assertFalse(res.get("ok").asBoolean());
+    assertTrue(res.path("error").path("message").asText().contains("ACCOUNT_NOT_FOUND"));
+  }
+
+  @Test
+  void createLoan_accountBelongsToAnotherClient_error() throws Exception {
+    // Create account for CL002
+    try (Connection c = sqlite.get()) {
+      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU002", "CL002", new BigDecimal("1000.00"), java.time.LocalDate.now()));
+      c.commit();
+    }
+
+    // Try to credit loan for CL001 to CL002's account
+    JsonNode res = call(Map.of(
+        "type", "CreateLoan",
+        "messageId", "msg-10",
+        "clientId", "CL001",
+        "accountId", "CU002", // belongs to CL002, not CL001
+        "principal", "1000.00"
+    ));
+    assertFalse(res.get("ok").asBoolean());
+    assertEquals("ACCOUNT_NOT_OWNED_BY_CLIENT", res.path("error").path("message").asText());
+  }
 }
