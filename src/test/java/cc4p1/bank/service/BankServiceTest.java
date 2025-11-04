@@ -83,6 +83,33 @@ class BankServiceTest {
   }
 
   @Test
+  void getClientInfo_existingClient_ok() throws Exception {
+    JsonNode res = call(Map.of(
+        "type", "GetClientInfo",
+        "clientId", "CL001"
+    ));
+    assertTrue(res.get("ok").asBoolean());
+    JsonNode data = res.path("data");
+    assertEquals("CL001", data.path("clientId").asText());
+    assertEquals("45678912", data.path("dni").asText());
+    assertEquals("MARÍA ELENA", data.path("nombres").asText());
+    assertEquals("GARCÍA", data.path("apellidoPat").asText());
+    assertEquals("FLORES", data.path("apellidoMat").asText());
+    assertEquals("Av. Universitaria 1234", data.path("direccion").asText());
+    assertNotNull(data.get("fechaRegistro"));
+  }
+
+  @Test
+  void getClientInfo_nonExistentClient_error() throws Exception {
+    JsonNode res = call(Map.of(
+        "type", "GetClientInfo",
+        "clientId", "CL999"
+    ));
+    assertFalse(res.get("ok").asBoolean());
+    assertEquals("CLIENT_NOT_FOUND", res.path("error").path("message").asText());
+  }
+
+  @Test
   void deposit_then_duplicate_is_idempotent() throws Exception {
     // First deposit
     JsonNode r1 = call(Map.of(

@@ -111,16 +111,17 @@ public class BankService {
       c.commit();
       if (cli == null)
         return error("CLIENT_NOT_FOUND", corrId);
-      Map<String, Object> data = Map.of(
-          "clientId", cli.idCliente(),
-          "dni", cli.dni(),
-          "nombres", cli.nombres(),
-          "apellidoPat", cli.apellidoPat(),
-          "apellidoMat", cli.apellidoMat(),
-          "direccion", cli.direccion(),
-          "telefono", cli.telefono(),
-          "correo", cli.correo(),
-          "fechaRegistro", String.valueOf(cli.fechaRegistro()).replace('T', ' '));
+      // Use LinkedHashMap to allow null values
+      Map<String, Object> data = new LinkedHashMap<>();
+      data.put("clientId", cli.idCliente());
+      data.put("dni", cli.dni());
+      data.put("nombres", cli.nombres());
+      data.put("apellidoPat", cli.apellidoPat());
+      data.put("apellidoMat", cli.apellidoMat());
+      data.put("direccion", cli.direccion());
+      data.put("telefono", cli.telefono());
+      data.put("correo", cli.correo());
+      data.put("fechaRegistro", String.valueOf(cli.fechaRegistro()).replace('T', ' '));
       return ok(data, corrId);
     }
   }
