@@ -236,8 +236,7 @@ En caso de error:
   "type": "Deposit",
   "messageId": "a7d9a4f3-...",
   "accountId": "CU001",
-  "amount": 150.00,
-  "metadata": { "source": "app-mobile" }
+  "amount": 150.00
 }
 ```
 
@@ -370,8 +369,7 @@ Para transferencias reales, el sistema aplica **doble asiento** (retiro + depós
   "messageId": "f9b8c3b1-...",
   "fromAccountId": "CU_ORIGEN",
   "toAccountId": "CU_DESTINO",
-  "amount": 150.00,
-  "metadata": { "note": "Pago de servicios" }
+  "amount": 150.00
 }
 ```
 
