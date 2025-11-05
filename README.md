@@ -55,6 +55,7 @@ Almacena todas las operaciones realizadas sobre las cuentas.
 | **id_transferencia** | TEXT | Opcional, por defecto NULL |  Identificador de transferencia (ej. `TR001`). |
 | **id_cuenta**      | TEXT | FOREIGN KEY → CUENTAS(id_cuenta) | Cuenta sobre la cual se ejecuta la transacción. |
 | **id_cuenta_destino** | TEXT | Opcional, por defecto NULL | Para transferencias: cuenta destino asociada. |
+| **metadata**       | TEXT | Opcional, por defecto NULL | JSON con metadatos adicionales (por ejemplo: {"note":"..."}). |
 | **tipo**           | TEXT | CHECK (tipo IN ('deposito','retiro','deuda') | Tipo de transacción realizada. |
 | **monto**          | REAL | CHECK (monto >= 0) | Monto del movimiento. |
 | **fecha**     | TEXT | DEFAULT datetime('now') | Fecha y hora de la transacción. |
@@ -310,7 +311,7 @@ En caso de error:
     "items": [
       { "txId": "TX1042", "idTransferencia": null, "receivingAccountId": null, "tipo": "deposito", "monto": 150.00, "fecha": "2025-10-28 12:30:10" },
       { "txId": "TX1040", "idTransferencia": null, "receivingAccountId": null, "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" },
-      { "txId": "TX1051", "idTransferencia": "TR1051", "receivingAccountId": "CU010", "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" }
+      { "txId": "TX1051", "idTransferencia": "TR1051", "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02", "note": "Rent payment",  "metadata": { "note": "Rent payment" },  "receivingAccountId": "CU002" }
     ],
     "count": 3,
     "hasMore": false
@@ -356,7 +357,7 @@ En caso de error:
 ```json
 {
   "ok": true,
-  "data": { "loanId": "PR0012", "clientId": "CL001", "principal": 7500.00, "status": "activo" },
+  "data": { "loanId": "PR0012", "clientId": "CL001", "creditedAccountId": "CU001", "principal": 7500.00, "status": "activo" },
   "error": null,
   "correlationId": "..."
 }
@@ -376,7 +377,8 @@ Para transferencias reales, el sistema aplica **doble asiento** (retiro + depós
   "messageId": "f9b8c3b1-...",
   "fromAccountId": "CU_ORIGEN",
   "toAccountId": "CU_DESTINO",
-  "amount": 150.00
+  "amount": 150.00,
+  "metadata": { "note": "Pago de alquiler" }
 }
 ```
 
@@ -389,7 +391,8 @@ Para transferencias reales, el sistema aplica **doble asiento** (retiro + depós
     "idTransaccion": "TX2001",
     "idTransferencia": "TR0001",
     "fromAccountNewBalance": 2350.00,
-    "toAccountNewBalance": 4180.00
+    "toAccountNewBalance": 4180.00,
+    "metadata": { "note": "Pago de alquiler" }
   },
   "error": null,
   "correlationId": "..."
@@ -397,6 +400,9 @@ Para transferencias reales, el sistema aplica **doble asiento** (retiro + depós
 ```
 
 > Errores frecuentes: `ACCOUNT_NOT_FOUND`, `SAME_ACCOUNT`, `INSUFFICIENT_FUNDS`.
+>
+> Notas:
+> - El campo `metadata` es opcional; se almacena como JSON en `TRANSACCIONES.metadata` en ambas patas de la transferencia.
 
 ---
 

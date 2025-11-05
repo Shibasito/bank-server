@@ -66,6 +66,12 @@ public class SQLite {
         s.executeUpdate("ALTER TABLE TRANSACCIONES ADD COLUMN id_cuenta_destino TEXT");
       }
     }
+    // TRANSACCIONES.metadata (nullable)
+    if (!columnExists(c, "TRANSACCIONES", "metadata")) {
+      try (Statement s = c.createStatement()) {
+        s.executeUpdate("ALTER TABLE TRANSACCIONES ADD COLUMN metadata TEXT");
+      }
+    }
 
     // PRESTAMOS.id_cuenta (nullable=false) introduced in newer schema
     if (!columnExists(c, "PRESTAMOS", "id_cuenta")) {
@@ -85,21 +91,20 @@ public class SQLite {
     // If not, recreate table with updated CHECK and copy data.
     if (!transaccionesAllowsDeuda(c)) {
       try (Statement s = c.createStatement()) {
-        s.executeUpdate("CREATE TABLE IF NOT EXISTS TRANSACCIONES__NEW (\n" +
+    s.executeUpdate("CREATE TABLE IF NOT EXISTS TRANSACCIONES__NEW (\n" +
             "    id_transaccion TEXT PRIMARY KEY,\n" +
             "    id_transferencia TEXT DEFAULT NULL,\n" +
             "    id_cuenta      TEXT NOT NULL,\n" +
             "    id_cuenta_destino TEXT DEFAULT NULL,\n" +
+      "    metadata       TEXT DEFAULT NULL,\n" +
             "    tipo           TEXT NOT NULL CHECK (tipo IN ('deposito','retiro','deuda')),\n" +
             "    monto          REAL NOT NULL CHECK (monto >= 0),\n" +
             "    fecha          TEXT NOT NULL DEFAULT (datetime('now')),\n" +
             "    FOREIGN KEY (id_cuenta) REFERENCES CUENTAS(id_cuenta)\n" +
             ")");
 
-        s.executeUpdate("INSERT INTO TRANSACCIONES__NEW(id_transaccion,id_transferencia,id_cuenta,id_cuenta_destino,tipo,monto,fecha)\n" +
-            " SELECT id_transaccion,id_transferencia,id_cuenta,\n" +
-            "        CASE WHEN (SELECT 1) THEN id_cuenta_destino END,\n" +
-            "        tipo,monto,fecha FROM TRANSACCIONES");
+    s.executeUpdate("INSERT INTO TRANSACCIONES__NEW(id_transaccion,id_transferencia,id_cuenta,id_cuenta_destino,metadata,tipo,monto,fecha)\n" +
+      " SELECT id_transaccion,id_transferencia,id_cuenta, id_cuenta_destino, NULL as metadata, tipo,monto,fecha FROM TRANSACCIONES");
 
         s.executeUpdate("DROP TABLE TRANSACCIONES");
         s.executeUpdate("ALTER TABLE TRANSACCIONES__NEW RENAME TO TRANSACCIONES");

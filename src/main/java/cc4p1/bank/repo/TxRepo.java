@@ -55,7 +55,7 @@ public class TxRepo {
     accounts.changeBalance(c, accountId, amount);
 
     // Step 2: register transaction
-    insertTx(c, txId, transferId, accountId, null, TipoTransaccion.deposito, amount);
+  insertTx(c, txId, transferId, accountId, null, null, TipoTransaccion.deposito, amount);
 
     return txId;
   }
@@ -68,7 +68,7 @@ public class TxRepo {
     accounts.changeBalance(c, accountId, amount.negate());
 
     // Step 2: register transaction
-    insertTx(c, txId, transferId, accountId, null, TipoTransaccion.retiro, amount);
+  insertTx(c, txId, transferId, accountId, null, null, TipoTransaccion.retiro, amount);
 
     return txId;
   }
@@ -79,16 +79,16 @@ public class TxRepo {
    */
   public void transfer(Connection c, String transferId, String txId, String fromAccount,
       String toAccount, BigDecimal amount,
-      AccountRepo accounts) throws SQLException {
+    AccountRepo accounts, String metadataJson) throws SQLException {
     // 1) debit (fails if negative via AccountRepo.changeBalance)
     accounts.changeBalance(c, fromAccount, amount.negate());
-    insertTx(c, txId, transferId, fromAccount, toAccount, TipoTransaccion.retiro, amount);
+  insertTx(c, txId, transferId, fromAccount, toAccount, metadataJson, TipoTransaccion.retiro, amount);
 
     // 2) credit
     accounts.changeBalance(c, toAccount, amount);
     // usar un id de transacción distinto para la segunda pata
     String txId2 = cc4p1.bank.util.Ids.tx();
-    insertTx(c, txId2, transferId, toAccount, toAccount, TipoTransaccion.deposito, amount);
+  insertTx(c, txId2, transferId, toAccount, toAccount, metadataJson, TipoTransaccion.deposito, amount);
   }
 
   /**
@@ -98,17 +98,17 @@ public class TxRepo {
     // Debit
     accounts.changeBalance(c, accountId, amount.negate());
     // Log transaction as 'deuda'
-    insertTx(c, txId, null, accountId, null, TipoTransaccion.deuda, amount);
+  insertTx(c, txId, null, accountId, null, null, TipoTransaccion.deuda, amount);
     return txId;
   }
 
   /* ===== Helpers ===== */
 
-  private void insertTx(Connection c, String txId, String transferId, String accountId, String destAccountId, TipoTransaccion tipo,
+  private void insertTx(Connection c, String txId, String transferId, String accountId, String destAccountId, String metadataJson, TipoTransaccion tipo,
       BigDecimal amount) throws SQLException {
     String sql = """
-        INSERT INTO TRANSACCIONES(id_transaccion,id_transferencia,id_cuenta,id_cuenta_destino,tipo,monto,fecha)
-        VALUES(?,?,?,?,?, ?,datetime('now'))
+        INSERT INTO TRANSACCIONES(id_transaccion,id_transferencia,id_cuenta,id_cuenta_destino,metadata,tipo,monto,fecha)
+        VALUES(?,?,?,?,?,?, ?,datetime('now'))
         """;
     try (PreparedStatement ps = c.prepareStatement(sql)) {
       ps.setString(1, txId);
@@ -118,8 +118,9 @@ public class TxRepo {
         ps.setString(2, transferId);
       ps.setString(3, accountId);
       if (destAccountId == null) ps.setNull(4, Types.VARCHAR); else ps.setString(4, destAccountId);
-      ps.setString(5, tipo.toString());
-      ps.setBigDecimal(6, amount);
+      if (metadataJson == null) ps.setNull(5, Types.VARCHAR); else ps.setString(5, metadataJson);
+      ps.setString(6, tipo.toString());
+      ps.setBigDecimal(7, amount);
       ps.executeUpdate();
     }
   }
@@ -132,6 +133,7 @@ public class TxRepo {
         rs.getString("id_transferencia"),
         rs.getString("id_cuenta"),
         rs.getString("id_cuenta_destino"),
+        rs.getString("metadata"),
         TipoTransaccion.from(rs.getString("tipo")),
         rs.getBigDecimal("monto"),
         when);

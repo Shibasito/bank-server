@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS TRANSACCIONES (
     id_transferencia TEXT DEFAULT NULL,          -- Opcional, para transferencias entre cuentas. Formato TR001, TR002...
     id_cuenta      TEXT NOT NULL,
     id_cuenta_destino TEXT DEFAULT NULL,         -- Para transferencias: cuenta destino
+    metadata       TEXT DEFAULT NULL,            -- JSON con metadatos opcionales (p.ej., {"note":"..."})
     tipo           TEXT NOT NULL CHECK (tipo IN ('deposito','retiro', 'deuda')),
     monto          REAL NOT NULL CHECK (monto >= 0),
     fecha          TEXT NOT NULL DEFAULT (datetime('now')),

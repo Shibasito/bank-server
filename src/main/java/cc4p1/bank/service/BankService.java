@@ -181,6 +181,17 @@ public class BankService {
         it.put("tipo", t.tipo().toString());
         it.put("monto", t.monto());
         it.put("fecha", t.fecha() == null ? null : t.fecha().toString().replace('T', ' '));
+        if (t.metadata() != null) {
+          try {
+            com.fasterxml.jackson.databind.JsonNode meta = om.readTree(t.metadata());
+            it.put("metadata", meta);
+            if (meta.hasNonNull("note")) {
+              it.put("note", meta.get("note").asText());
+            }
+          } catch (Exception ignore) {
+            it.put("metadata", t.metadata());
+          }
+        }
         list.add(it);
       }
       java.util.Map<String, Object> data = new java.util.LinkedHashMap<>();
@@ -317,6 +328,11 @@ public class BankService {
     String from = reqStr(r, "fromAccountId");
     String to = reqStr(r, "toAccountId");
     BigDecimal amount = reqBig(r, "amount");
+    // Optional metadata object (e.g., {"note":"..."})
+    String metadataJson = null;
+    if (r.has("metadata") && !r.get("metadata").isNull()) {
+      metadataJson = om.writeValueAsString(r.get("metadata"));
+    }
     if (from.equals(to))
       return error("SAME_ACCOUNT", corrId);
 
@@ -328,7 +344,7 @@ public class BankService {
       String transferId = Ids.transfer();
       String txId = Ids.tx();
 
-      txRepo.transfer(c, transferId, txId, from, to, amount, accountRepo);
+  txRepo.transfer(c, transferId, txId, from, to, amount, accountRepo, metadataJson);
 
       messageRepo.markProcessed(c, msgId);
       var fromAcc = accountRepo.findById(c, from);
@@ -363,6 +379,9 @@ public class BankService {
       data.put("fromAccountNewBalance", fromBal);
       data.put("toAccountNewBalance", toBal);
       data.put("receivingClientName", receivingClientName);
+      if (metadataJson != null) {
+        data.put("metadata", om.readTree(metadataJson));
+      }
       return ok(data, corrId);
     } catch (Exception e) {
       return error(e.getMessage(), corrId);

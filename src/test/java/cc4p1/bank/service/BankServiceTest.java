@@ -238,6 +238,46 @@ class BankServiceTest {
   }
 
   @Test
+  void transfer_with_metadata_shows_note_in_listing() throws Exception {
+    // Create destination account CU012 for CL001
+    try (Connection c = sqlite.get()) {
+      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU012", "CL001", new BigDecimal("0.00"), java.time.LocalDate.now()));
+      c.commit();
+    }
+
+    // Perform transfer with metadata note
+    JsonNode res = call(Map.of(
+        "type", "Transfer",
+        "messageId", "msg-30",
+        "fromAccountId", "CU001",
+        "toAccountId", "CU012",
+        "amount", "10.00",
+        "metadata", Map.of("note", "hello-note")
+    ));
+    assertTrue(res.get("ok").asBoolean());
+
+    // List and find note
+    JsonNode list = call(Map.of(
+        "type", "ListTransactions",
+        "accountId", "CU001",
+        "from", "2000-01-01",
+        "to", "2100-01-01",
+        "limit", 100,
+        "offset", 0
+    ));
+    assertTrue(list.get("ok").asBoolean());
+    boolean found = false;
+    for (JsonNode item : list.path("data").path("items")) {
+      if (item.hasNonNull("idTransferencia") && item.hasNonNull("note") &&
+          "hello-note".equals(item.get("note").asText())) {
+        found = true;
+        break;
+      }
+    }
+    assertTrue(found, "Expected to find transfer item with note 'hello-note'");
+  }
+
+  @Test
   void transfer_same_account_error() throws Exception {
     JsonNode res = call(Map.of(
         "type", "Transfer",
