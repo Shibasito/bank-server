@@ -15,6 +15,7 @@ public class LoanRepo {
         return rs.next() ? new Prestamo(
             rs.getString("id_prestamo"),
             rs.getString("id_cliente"),
+            rs.getString("id_cuenta"),
             rs.getBigDecimal("monto_inicial"),
             rs.getBigDecimal("monto_pendiente"),
             EstadoPrestamo.from(rs.getString("estado")),
@@ -29,14 +30,15 @@ public class LoanRepo {
 
     // 1. Create the loan record
     String sql = """
-        INSERT INTO PRESTAMOS(id_prestamo,id_cliente,monto_inicial,monto_pendiente,estado,fecha_solicitud)
-        VALUES(?,?,?,?, 'activo', date('now'))
+        INSERT INTO PRESTAMOS(id_prestamo,id_cliente,id_cuenta,monto_inicial,monto_pendiente,estado,fecha_solicitud)
+        VALUES(?,?,?,?,?, 'activo', date('now'))
         """;
     try (PreparedStatement ps = c.prepareStatement(sql)) {
       ps.setString(1, loanId);
       ps.setString(2, clientId);
-      ps.setBigDecimal(3, principal);
+      ps.setString(3, accountId);
       ps.setBigDecimal(4, principal);
+      ps.setBigDecimal(5, principal);
       ps.executeUpdate();
     }
 

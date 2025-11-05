@@ -33,11 +33,13 @@ CREATE TABLE IF NOT EXISTS CUENTAS (
 CREATE TABLE IF NOT EXISTS PRESTAMOS (
     id_prestamo     TEXT PRIMARY KEY,            -- PR001, PR002...
     id_cliente      TEXT NOT NULL,
+    id_cuenta       TEXT NOT NULL,               -- Cuenta que recibe el préstamo
     monto_inicial   REAL NOT NULL,
     monto_pendiente REAL NOT NULL,
     estado          TEXT NOT NULL CHECK (estado IN ('activo','pagado')),
     fecha_solicitud TEXT NOT NULL DEFAULT (date('now')),
-    FOREIGN KEY (id_cliente) REFERENCES CLIENTES(id_cliente)
+    FOREIGN KEY (id_cliente) REFERENCES CLIENTES(id_cliente),
+    FOREIGN KEY (id_cuenta) REFERENCES CUENTAS(id_cuenta)
 );
 
 -- =========================================================
@@ -78,8 +80,8 @@ VALUES
 INSERT INTO CUENTAS(id_cuenta, id_cliente, saldo)
 VALUES ('CU001','CL001',2500.00);
 
-INSERT INTO PRESTAMOS(id_prestamo, id_cliente, monto_inicial, monto_pendiente, estado)
-VALUES ('PR001','CL001',10000.00,8000.00,'activo');
+INSERT INTO PRESTAMOS(id_prestamo, id_cliente, id_cuenta, monto_inicial, monto_pendiente, estado)
+VALUES ('PR001','CL001','CU001',10000.00,8000.00,'activo');
 
 INSERT INTO TRANSACCIONES(id_transaccion, id_cuenta, tipo, monto, fecha)
 VALUES ('TX001','CU001','deposito',500.00, '2025-10-01 10:00:00'),

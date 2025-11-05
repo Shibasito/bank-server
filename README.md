@@ -39,6 +39,7 @@ Registra los préstamos otorgados a los clientes.
 |-------------------|------|----------------|--------------|
 | **id_prestamo**   | TEXT | PRIMARY KEY | Identificador del préstamo (ej. `PR001`). |
 | **id_cliente**    | TEXT | FOREIGN KEY → CLIENTES(id_cliente) | Cliente titular del préstamo. |
+| **id_cuenta**     | TEXT | FOREIGN KEY → CUENTAS(id_cuenta), NOT NULL | Cuenta que recibe el préstamo. |
 | **monto_inicial** | REAL | NOT NULL | Monto total otorgado. |
 | **monto_pendiente** | REAL | NOT NULL | Saldo pendiente de pago. |
 | **estado**        | TEXT | CHECK (estado IN ('activo','pagado')) | Estado actual del préstamo. |
