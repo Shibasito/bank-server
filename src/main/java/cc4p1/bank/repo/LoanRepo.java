@@ -72,4 +72,39 @@ public class LoanRepo {
     // Return updated entity
     return findById(c, loanId);
   }
+
+  /**
+   * List loans for a client, optionally filtered by status.
+   * @param estado "activo", "pagado", or null for all
+   */
+  public java.util.List<Prestamo> listByClient(Connection c, String clientId, String estado) throws SQLException {
+    String sql;
+    if (estado == null || "todo".equalsIgnoreCase(estado)) {
+      sql = "SELECT * FROM PRESTAMOS WHERE id_cliente=? ORDER BY fecha_solicitud DESC";
+    } else {
+      sql = "SELECT * FROM PRESTAMOS WHERE id_cliente=? AND estado=? ORDER BY fecha_solicitud DESC";
+    }
+    
+    try (PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setString(1, clientId);
+      if (estado != null && !"todo".equalsIgnoreCase(estado)) {
+        ps.setString(2, estado);
+      }
+      
+      try (ResultSet rs = ps.executeQuery()) {
+        java.util.List<Prestamo> loans = new java.util.ArrayList<>();
+        while (rs.next()) {
+          loans.add(new Prestamo(
+              rs.getString("id_prestamo"),
+              rs.getString("id_cliente"),
+              rs.getString("id_cuenta"),
+              rs.getBigDecimal("monto_inicial"),
+              rs.getBigDecimal("monto_pendiente"),
+              EstadoPrestamo.from(rs.getString("estado")),
+              LocalDate.parse(rs.getString("fecha_solicitud"))));
+        }
+        return loans;
+      }
+    }
+  }
 }

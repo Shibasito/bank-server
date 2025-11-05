@@ -74,6 +74,9 @@ public class BankService {
         case "PayLoan" -> {
           return handlePayLoan(r, corrId);
         }
+        case "ListClientLoans" -> {
+          return handleListClientLoans(r, corrId);
+        }
         // Extensiones para el cliente web (alias en minúsculas)
         case "login", "Login" -> {
           return handleLogin(r, corrId);
@@ -507,6 +510,52 @@ public class BankService {
       return ok(data, corrId);
     } catch (Exception e) {
       return error(e.getMessage(), corrId);
+    }
+  }
+
+  private String handleListClientLoans(JsonNode r, String corrId) throws Exception {
+    String clientId = reqStr(r, "clientId");
+    String status = optStr(r, "status", "todo"); // "activo", "pagado", or "todo"
+
+    try (Connection c = sqlite.get()) {
+      // Validate client exists
+      var cli = clientRepo.findById(c, clientId);
+      if (cli == null) {
+        c.commit();
+        return error("CLIENT_NOT_FOUND", corrId);
+      }
+
+      // Get loans filtered by status
+      String filterStatus = "todo".equalsIgnoreCase(status) ? null : status;
+      List<Prestamo> loans = loanRepo.listByClient(c, clientId, filterStatus);
+      
+      // Count active loans
+      long activeCount = loans.stream()
+          .filter(loan -> loan.estado() == EstadoPrestamo.activo)
+          .count();
+
+      c.commit();
+
+      // Build response
+      List<Map<String, Object>> loanList = new ArrayList<>();
+      for (Prestamo loan : loans) {
+        Map<String, Object> loanInfo = new LinkedHashMap<>();
+        loanInfo.put("loanId", loan.idPrestamo());
+        loanInfo.put("accountId", loan.idCuenta());
+        loanInfo.put("principal", loan.montoInicial());
+        loanInfo.put("pending", loan.montoPendiente());
+        loanInfo.put("status", loan.estado().toString());
+        loanInfo.put("requestDate", loan.fechaSolicitud().toString());
+        loanList.add(loanInfo);
+      }
+
+      Map<String, Object> data = new LinkedHashMap<>();
+      data.put("clientId", clientId);
+      data.put("totalLoans", loans.size());
+      data.put("activeLoans", activeCount);
+      data.put("loans", loanList);
+
+      return ok(data, corrId);
     }
   }
 

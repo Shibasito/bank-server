@@ -450,7 +450,78 @@ Body (response ok)
 
 ---
 
-#### 1.9 `Login` (autenticación)
+#### 1.9 `ListClientLoans` (lectura, messageId opcional)
+
+Lista todos los préstamos asociados a un cliente, con filtrado opcional por estado.
+
+Body (request)
+
+```json
+{
+  "type": "ListClientLoans",
+  "clientId": "CL001",
+  "status": "activo"  // opcional: "activo", "pagado", "todo" (por defecto)
+}
+```
+
+Parámetros:
+- `clientId`: ID del cliente (requerido)
+- `status`: Filtro opcional:
+  - `"activo"`: solo préstamos con saldo pendiente > 0
+  - `"pagado"`: solo préstamos totalmente pagados
+  - `"todo"` o ausente: todos los préstamos
+
+Body (response ok)
+
+```json
+{
+  "ok": true,
+  "data": {
+    "clientId": "CL001",
+    "totalLoans": 3,
+    "activeLoans": 2,
+    "loans": [
+      {
+        "loanId": "PR001",
+        "accountId": "CU001",
+        "principal": 5000.00,
+        "pending": 3000.00,
+        "status": "activo",
+        "requestDate": "2025-11-01"
+      },
+      {
+        "loanId": "PR002",
+        "accountId": "CU001",
+        "principal": 2000.00,
+        "pending": 1500.00,
+        "status": "activo",
+        "requestDate": "2025-11-03"
+      },
+      {
+        "loanId": "PR003",
+        "accountId": "CU002",
+        "principal": 1000.00,
+        "pending": 0.00,
+        "status": "pagado",
+        "requestDate": "2025-10-15"
+      }
+    ]
+  },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+Notas:
+- `totalLoans`: conteo total de préstamos en la respuesta (después de filtrar)
+- `activeLoans`: conteo de préstamos con estado `activo` (independiente del filtro)
+- Los préstamos se devuelven ordenados por fecha de solicitud (más recientes primero)
+
+> Errores frecuentes: `CLIENT_NOT_FOUND`.
+
+---
+
+#### 1.10 `Login` (autenticación)
 
 Compatibilidad de entradas: se aceptan tanto `type` como `operationType` (cliente web).
 
