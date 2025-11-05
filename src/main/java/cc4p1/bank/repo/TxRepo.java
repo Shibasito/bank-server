@@ -21,15 +21,20 @@ public class TxRepo {
 
   public List<Transaccion> listByAccountAndDate(Connection c, String accountId, String from, String to, int limit,
       int offset) throws SQLException {
+    // Use index-friendly range filter on ISO datetime strings
+    // Lower bound inclusive: from 00:00:00
+    // Upper bound exclusive: to + 1 day at 00:00:00
     String sql = """
         SELECT * FROM TRANSACCIONES
-         WHERE id_cuenta=? AND date(fecha) BETWEEN date(?) AND date(?)
+         WHERE id_cuenta=?
+           AND fecha >= ?
+           AND fecha < datetime(date(?), '+1 day')
          ORDER BY fecha DESC
          LIMIT ? OFFSET ?
         """;
     try (PreparedStatement ps = c.prepareStatement(sql)) {
       ps.setString(1, accountId);
-      ps.setString(2, from);
+      ps.setString(2, from + " 00:00:00");
       ps.setString(3, to);
       ps.setInt(4, limit);
       ps.setInt(5, offset);

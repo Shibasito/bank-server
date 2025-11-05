@@ -319,6 +319,9 @@ En caso de error:
 ```
 
 > **Nota:** La respuesta incluye el saldo actual de la cuenta (`currentBalance`) al momento de la consulta.
+>
+> Formato de fechas: `from` y `to` aceptan `YYYY-MM-DD` o ISO8601 con hora (p. ej. `YYYY-MM-DDTHH:MM:SS` o con sufijo `Z`).
+> El servidor normaliza internamente a `YYYY-MM-DD`. Si omites `from`/`to`, se usan valores por defecto para incluir todo el rango.
 
 ---
 

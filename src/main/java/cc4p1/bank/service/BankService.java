@@ -150,8 +150,11 @@ public class BankService {
 
   private String handleListTransactions(JsonNode r, String corrId) throws Exception {
     String accountId = reqStr(r, "accountId");
-    String from = optStr(r, "from", "0001-01-01");
-    String to = optStr(r, "to", "9999-12-31");
+    String fromRaw = optStr(r, "from", "0001-01-01");
+    String toRaw = optStr(r, "to", "9999-12-31");
+    // Normalize incoming date params to YYYY-MM-DD to be SQLite date() friendly
+    String from = normalizeDateParam(fromRaw, "0001-01-01");
+    String to = normalizeDateParam(toRaw, "9999-12-31");
     int limit = optInt(r, "limit", 100);
     int offset = optInt(r, "offset", 0);
 
@@ -450,5 +453,31 @@ public class BankService {
 
     record Verification(boolean valid, String dni, String nombres, String apellidoPat, String apellidoMat) {
     }
+  }
+
+  /**
+   * Normalizes various date string formats (e.g., 2025-10-01, 2025-10-01T00:00:00,
+   * 2025-10-01T00:00:00Z) to plain YYYY-MM-DD for SQLite date() function.
+   * If input cannot be recognized, returns the provided default.
+   */
+  private static String normalizeDateParam(String s, String def) {
+    if (s == null) return def;
+    String t = s.trim();
+    if (t.isEmpty()) return def;
+    // Replace 'T' with space and strip trailing Z if present
+    t = t.replace('T', ' ').replace("Z", "");
+    if (t.length() >= 10) {
+      String d = t.substring(0, 10);
+      // Quick validation: YYYY-MM-DD
+      if (d.length() == 10 && d.charAt(4) == '-' && d.charAt(7) == '-') {
+        // Basic digit check
+        boolean ok = Character.isDigit(d.charAt(0)) && Character.isDigit(d.charAt(1)) &&
+                     Character.isDigit(d.charAt(2)) && Character.isDigit(d.charAt(3)) &&
+                     Character.isDigit(d.charAt(5)) && Character.isDigit(d.charAt(6)) &&
+                     Character.isDigit(d.charAt(8)) && Character.isDigit(d.charAt(9));
+        if (ok) return d;
+      }
+    }
+    return def;
   }
 }

@@ -81,5 +81,6 @@ VALUES ('CU001','CL001',2500.00);
 INSERT INTO PRESTAMOS(id_prestamo, id_cliente, monto_inicial, monto_pendiente, estado)
 VALUES ('PR001','CL001',10000.00,8000.00,'activo');
 
-INSERT INTO TRANSACCIONES(id_transaccion, id_cuenta, tipo, monto)
-VALUES ('TX001','CU001','deposito',500.00);
+INSERT INTO TRANSACCIONES(id_transaccion, id_cuenta, tipo, monto, fecha)
+VALUES ('TX001','CU001','deposito',500.00, '2025-10-01 10:00:00');
+VALUES ('TX002','CU001','deposito',500.00 , '2025-10-02 11:00:00');
