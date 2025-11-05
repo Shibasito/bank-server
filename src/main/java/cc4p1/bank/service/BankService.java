@@ -259,6 +259,13 @@ public class BankService {
         return error("CLIENT_ALREADY_EXISTS", corrId);
       }
 
+      // RENIEC validation (RPC); fail if not valid
+      var v = reniec.verify(dni); // should throw or return a struct {valid, ...}
+      if (!v.valid()) {
+        c.rollback();
+        return error("RENIEC_INVALID_ID", corrId);
+      }
+
       String clientId = cc4p1.bank.util.Ids.client();
       var cli = new cc4p1.bank.domain.Cliente(clientId, dni, nombres, apePat, apeMat, direccion, telefono, correo, java.time.LocalDateTime.now());
       clientRepo.insert(c, cli, password);

@@ -493,9 +493,13 @@ Body (response ok):
 
 ---
 
-#### 1.10 `Register` (registro de cliente + cuenta) — 💾 escritura, idempotente
+#### 1.10 `Register` (registro de cliente + cuenta) — 💾 escritura, idempotente, validación RENIEC
 
 Compatibilidad de entradas: `type` o `operationType` con `payload`.
+
+**Validaciones:**
+1. DNI no debe estar ya registrado (`CLIENT_ALREADY_EXISTS`)
+2. Identidad válida en RENIEC (`RENIEC_INVALID_ID`)
 
 Body (request, estilo cliente web):
 
@@ -548,6 +552,7 @@ Body (response ok):
 > Notas:
 > - Requiere `messageId` para idempotencia (reintentos seguros).
 > - Falla con `CLIENT_ALREADY_EXISTS` si el DNI ya está registrado.
+> - Valida la identidad con RENIEC antes de crear el cliente; falla con `RENIEC_INVALID_ID` si no es válido.
 
 
 ### 2) Reglas de negocio y validaciones (resumen)
