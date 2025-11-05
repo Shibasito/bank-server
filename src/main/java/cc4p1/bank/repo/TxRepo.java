@@ -91,6 +91,17 @@ public class TxRepo {
     insertTx(c, txId2, transferId, toAccount, toAccount, TipoTransaccion.deposito, amount);
   }
 
+  /**
+   * Registers a loan payment: debit from account and create a 'deuda' transaction.
+   */
+  public String payDebt(Connection c, AccountRepo accounts, String txId, String accountId, BigDecimal amount) throws SQLException {
+    // Debit
+    accounts.changeBalance(c, accountId, amount.negate());
+    // Log transaction as 'deuda'
+    insertTx(c, txId, null, accountId, null, TipoTransaccion.deuda, amount);
+    return txId;
+  }
+
   /* ===== Helpers ===== */
 
   private void insertTx(Connection c, String txId, String transferId, String accountId, String destAccountId, TipoTransaccion tipo,

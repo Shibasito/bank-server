@@ -343,4 +343,69 @@ class BankServiceTest {
     assertFalse(res.get("ok").asBoolean());
     assertEquals("ACCOUNT_NOT_OWNED_BY_CLIENT", res.path("error").path("message").asText());
   }
+
+  @Test
+  void payLoan_partial_then_full_marks_pagado_and_blocks_overpayment() throws Exception {
+    // Create a small loan of 100 credited to CU001
+    JsonNode loanRes = call(Map.of(
+        "type", "CreateLoan",
+        "messageId", "msg-20",
+        "clientId", "CL001",
+        "accountId", "CU001",
+        "principal", "100.00"
+    ));
+    assertTrue(loanRes.get("ok").asBoolean());
+    String loanId = loanRes.path("data").path("loanId").asText();
+
+    // Pay 30
+    JsonNode p1 = call(Map.of(
+        "type", "PayLoan",
+        "messageId", "msg-21",
+        "loanId", loanId,
+        "accountId", "CU001",
+        "amount", "30.00"
+    ));
+    assertTrue(p1.get("ok").asBoolean());
+    assertEquals(70.00, p1.path("data").path("newPending").asDouble(), 0.001);
+    assertEquals("activo", p1.path("data").path("status").asText());
+
+    // Pay remaining 70
+    JsonNode p2 = call(Map.of(
+        "type", "PayLoan",
+        "messageId", "msg-22",
+        "loanId", loanId,
+        "accountId", "CU001",
+        "amount", "70.00"
+    ));
+    assertTrue(p2.get("ok").asBoolean());
+    assertEquals(0.00, p2.path("data").path("newPending").asDouble(), 0.001);
+    assertEquals("pagado", p2.path("data").path("status").asText());
+
+    // Overpayment should fail
+    JsonNode p3 = call(Map.of(
+        "type", "PayLoan",
+        "messageId", "msg-23",
+        "loanId", loanId,
+        "accountId", "CU001",
+        "amount", "1.00"
+    ));
+    assertFalse(p3.get("ok").asBoolean());
+    assertEquals("OVERPAYMENT", p3.path("error").path("message").asText());
+
+    // Optional: ensure a 'deuda' transaction exists in history
+    JsonNode list = call(Map.of(
+        "type", "ListTransactions",
+        "accountId", "CU001",
+        "from", "2000-01-01",
+        "to", "2100-01-01",
+        "limit", 100,
+        "offset", 0
+    ));
+    assertTrue(list.get("ok").asBoolean());
+    boolean foundDebt = false;
+    for (JsonNode item : list.path("data").path("items")) {
+      if ("deuda".equals(item.path("tipo").asText())) { foundDebt = true; break; }
+    }
+    assertTrue(foundDebt);
+  }
 }

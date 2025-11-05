@@ -71,6 +71,9 @@ public class BankService {
         case "CreateLoan" -> {
           return handleCreateLoan(r, corrId);
         }
+        case "PayLoan" -> {
+          return handlePayLoan(r, corrId);
+        }
         // Extensiones para el cliente web (alias en minúsculas)
         case "login", "Login" -> {
           return handleLogin(r, corrId);
@@ -416,6 +419,65 @@ public class BankService {
           "creditedAccountId", accountId,
           "principal", principal, "status", "activo",
           "newBalance", newBal);
+      return ok(data, corrId);
+    } catch (Exception e) {
+      return error(e.getMessage(), corrId);
+    }
+  }
+
+  private String handlePayLoan(JsonNode r, String corrId) throws Exception {
+    String msgId = reqStr(r, "messageId");
+    String loanId = reqStr(r, "loanId");
+    String accountId = reqStr(r, "accountId");
+    BigDecimal amount = reqBig(r, "amount");
+
+    try (Connection c = sqlite.get()) {
+      if (messageRepo.alreadyProcessed(c, msgId)) {
+        c.rollback();
+        return ok(Map.of("duplicate", true), corrId);
+      }
+
+      // Validate loan
+      var loan = loanRepo.findById(c, loanId);
+      if (loan == null) {
+        c.rollback();
+        return error("LOAN_NOT_FOUND", corrId);
+      }
+      if (amount.signum() <= 0) {
+        c.rollback();
+        return error("VALIDATION_ERROR: amount must be > 0", corrId);
+      }
+      if (amount.compareTo(loan.montoPendiente()) > 0) {
+        c.rollback();
+        return error("OVERPAYMENT", corrId);
+      }
+
+      // Ensure account exists
+      var account = accountRepo.findById(c, accountId);
+      if (account == null) {
+        c.rollback();
+        return error("ACCOUNT_NOT_FOUND", corrId);
+      }
+
+      // 1) Debit account and log 'deuda' transaction
+      String txId = Ids.tx();
+      txRepo.payDebt(c, accountRepo, txId, accountId, amount);
+
+      // 2) Apply payment to loan
+      var updated = loanRepo.applyPayment(c, loanId, amount);
+
+      messageRepo.markProcessed(c, msgId);
+      var newBal = accountRepo.findById(c, accountId).saldo();
+      c.commit();
+
+      Map<String, Object> data = new LinkedHashMap<>();
+      data.put("txId", txId);
+      data.put("loanId", loanId);
+      data.put("accountId", accountId);
+      data.put("paid", amount);
+      data.put("newBalance", newBal);
+      data.put("newPending", updated.montoPendiente());
+      data.put("status", updated.estado().toString());
       return ok(data, corrId);
     } catch (Exception e) {
       return error(e.getMessage(), corrId);

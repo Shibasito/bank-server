@@ -49,4 +49,27 @@ public class LoanRepo {
     return loanId;
   }
 
+  /**
+   * Apply a payment to a loan. Validates not overpaying. Returns updated loan.
+   */
+  public Prestamo applyPayment(Connection c, String loanId, BigDecimal amount) throws SQLException {
+    Prestamo p = findById(c, loanId);
+    if (p == null) throw new SQLException("LOAN_NOT_FOUND");
+    if (amount == null || amount.signum() <= 0) throw new SQLException("VALIDATION_ERROR: amount must be > 0");
+    if (amount.compareTo(p.montoPendiente()) > 0) throw new SQLException("OVERPAYMENT");
+
+    BigDecimal newPending = p.montoPendiente().subtract(amount);
+    String newEstado = newPending.compareTo(BigDecimal.ZERO) == 0 ? "pagado" : p.estado().toString();
+
+    try (PreparedStatement ps = c.prepareStatement(
+        "UPDATE PRESTAMOS SET monto_pendiente=?, estado=? WHERE id_prestamo=?")) {
+      ps.setBigDecimal(1, newPending);
+      ps.setString(2, newEstado);
+      ps.setString(3, loanId);
+      ps.executeUpdate();
+    }
+
+    // Return updated entity
+    return findById(c, loanId);
+  }
 }

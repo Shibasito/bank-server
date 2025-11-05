@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS TRANSACCIONES (
     id_transferencia TEXT DEFAULT NULL,          -- Opcional, para transferencias entre cuentas. Formato TR001, TR002...
     id_cuenta      TEXT NOT NULL,
     id_cuenta_destino TEXT DEFAULT NULL,         -- Para transferencias: cuenta destino
-    tipo           TEXT NOT NULL CHECK (tipo IN ('deposito','retiro')),
+    tipo           TEXT NOT NULL CHECK (tipo IN ('deposito','retiro', 'deuda')),
     monto          REAL NOT NULL CHECK (monto >= 0),
     fecha          TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (id_cuenta) REFERENCES CUENTAS(id_cuenta)

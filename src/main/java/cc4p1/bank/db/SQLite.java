@@ -80,6 +80,32 @@ public class SQLite {
         s.executeUpdate("ALTER TABLE CLIENTES ADD COLUMN password TEXT");
       }
     }
+
+    // Ensure TRANSACCIONES allows tipo 'deuda' in CHECK constraint.
+    // If not, recreate table with updated CHECK and copy data.
+    if (!transaccionesAllowsDeuda(c)) {
+      try (Statement s = c.createStatement()) {
+        s.executeUpdate("CREATE TABLE IF NOT EXISTS TRANSACCIONES__NEW (\n" +
+            "    id_transaccion TEXT PRIMARY KEY,\n" +
+            "    id_transferencia TEXT DEFAULT NULL,\n" +
+            "    id_cuenta      TEXT NOT NULL,\n" +
+            "    id_cuenta_destino TEXT DEFAULT NULL,\n" +
+            "    tipo           TEXT NOT NULL CHECK (tipo IN ('deposito','retiro','deuda')),\n" +
+            "    monto          REAL NOT NULL CHECK (monto >= 0),\n" +
+            "    fecha          TEXT NOT NULL DEFAULT (datetime('now')),\n" +
+            "    FOREIGN KEY (id_cuenta) REFERENCES CUENTAS(id_cuenta)\n" +
+            ")");
+
+        s.executeUpdate("INSERT INTO TRANSACCIONES__NEW(id_transaccion,id_transferencia,id_cuenta,id_cuenta_destino,tipo,monto,fecha)\n" +
+            " SELECT id_transaccion,id_transferencia,id_cuenta,\n" +
+            "        CASE WHEN (SELECT 1) THEN id_cuenta_destino END,\n" +
+            "        tipo,monto,fecha FROM TRANSACCIONES");
+
+        s.executeUpdate("DROP TABLE TRANSACCIONES");
+        s.executeUpdate("ALTER TABLE TRANSACCIONES__NEW RENAME TO TRANSACCIONES");
+        s.executeUpdate("CREATE INDEX IF NOT EXISTS idx_transacciones_cuenta_fecha ON TRANSACCIONES(id_cuenta, fecha DESC)");
+      }
+    }
   }
 
   private boolean columnExists(Connection c, String tableName, String columnName) throws SQLException {
@@ -88,6 +114,19 @@ public class SQLite {
       while (rs.next()) {
         String col = rs.getString("name");
         if (columnName.equalsIgnoreCase(col)) return true;
+      }
+      return false;
+    }
+  }
+
+  private boolean transaccionesAllowsDeuda(Connection c) throws SQLException {
+    String q = "SELECT sql FROM sqlite_master WHERE type='table' AND name='TRANSACCIONES'";
+    try (PreparedStatement ps = c.prepareStatement(q); ResultSet rs = ps.executeQuery()) {
+      if (rs.next()) {
+        String sql = rs.getString(1);
+        if (sql == null) return false;
+        String lower = sql.toLowerCase();
+        return lower.contains("'deuda'");
       }
       return false;
     }

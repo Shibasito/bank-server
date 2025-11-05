@@ -55,7 +55,7 @@ Almacena todas las operaciones realizadas sobre las cuentas.
 | **id_transferencia** | TEXT | Opcional, por defecto NULL |  Identificador de transferencia (ej. `TR001`). |
 | **id_cuenta**      | TEXT | FOREIGN KEY → CUENTAS(id_cuenta) | Cuenta sobre la cual se ejecuta la transacción. |
 | **id_cuenta_destino** | TEXT | Opcional, por defecto NULL | Para transferencias: cuenta destino asociada. |
-| **tipo**           | TEXT | CHECK (tipo IN ('deposito','retiro') | Tipo de transacción realizada. |
+| **tipo**           | TEXT | CHECK (tipo IN ('deposito','retiro','deuda') | Tipo de transacción realizada. |
 | **monto**          | REAL | CHECK (monto >= 0) | Monto del movimiento. |
 | **fecha**     | TEXT | DEFAULT datetime('now') | Fecha y hora de la transacción. |
 
@@ -400,7 +400,51 @@ Para transferencias reales, el sistema aplica **doble asiento** (retiro + depós
 
 ---
 
-#### 1.8 `Login` (autenticación)
+#### 1.8 `PayLoan` (💾 escritura, requiere `messageId`)
+
+Paga parte o la totalidad de un préstamo existente. Registra una transacción de tipo `deuda` que debita la cuenta.
+
+Body (request)
+
+```json
+{
+  "type": "PayLoan",
+  "messageId": "uuid-...",
+  "loanId": "PR0001",
+  "accountId": "CU001",
+  "amount": 100.00
+}
+```
+
+Reglas:
+- `amount` > 0
+- No permite pagar más que el saldo pendiente (`OVERPAYMENT`)
+- Si el saldo pendiente llega a 0, el estado del préstamo pasa a `pagado`
+
+Body (response ok)
+
+```json
+{
+  "ok": true,
+  "data": {
+    "txId": "TX...",
+    "loanId": "PR0001",
+    "accountId": "CU001",
+    "paid": 100.00,
+    "newBalance": 2400.00,
+    "newPending": 0.00,
+    "status": "pagado"
+  },
+  "error": null,
+  "correlationId": "..."
+}
+```
+
+> También se registra en `TRANSACCIONES` una fila con `tipo = 'deuda'`.
+
+---
+
+#### 1.9 `Login` (autenticación)
 
 Compatibilidad de entradas: se aceptan tanto `type` como `operationType` (cliente web).
 
@@ -443,7 +487,7 @@ Body (response ok):
 
 ---
 
-#### 1.9 `Register` (registro de cliente + cuenta) — 💾 escritura, idempotente
+#### 1.10 `Register` (registro de cliente + cuenta) — 💾 escritura, idempotente
 
 Compatibilidad de entradas: `type` o `operationType` con `payload`.
 
