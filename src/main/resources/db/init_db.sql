@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS TRANSACCIONES (
     id_transaccion TEXT PRIMARY KEY,             -- TX001, TX002...
     id_transferencia TEXT DEFAULT NULL,          -- Opcional, para transferencias entre cuentas. Formato TR001, TR002...
     id_cuenta      TEXT NOT NULL,
+    id_cuenta_destino TEXT DEFAULT NULL,         -- Para transferencias: cuenta destino
     tipo           TEXT NOT NULL CHECK (tipo IN ('deposito','retiro')),
     monto          REAL NOT NULL CHECK (monto >= 0),
     fecha          TEXT NOT NULL DEFAULT (datetime('now')),
@@ -78,11 +79,17 @@ VALUES
     ('CL002','12345678','JUAN CARLOS','RAMÍREZ','QUISPE','secret2','Av. La Molina 5678');
 
 INSERT INTO CUENTAS(id_cuenta, id_cliente, saldo)
-VALUES ('CU001','CL001',2500.00);
+VALUES ('CU001','CL001',2500.00),
+       ('CU002','CL002',1500.00);
 
 INSERT INTO PRESTAMOS(id_prestamo, id_cliente, id_cuenta, monto_inicial, monto_pendiente, estado)
 VALUES ('PR001','CL001','CU001',10000.00,8000.00,'activo');
 
-INSERT INTO TRANSACCIONES(id_transaccion, id_cuenta, tipo, monto, fecha)
-VALUES ('TX001','CU001','deposito',500.00, '2025-10-01 10:00:00'),
-('TX002','CU001','deposito',500.00 , '2025-10-02 11:00:00');
+INSERT INTO TRANSACCIONES(id_transaccion, id_cuenta, id_cuenta_destino, tipo, monto, fecha)
+VALUES ('TX001','CU001', NULL,'deposito',500.00, '2025-10-01 10:00:00'),
+       ('TX002','CU001', NULL,'deposito',500.00 , '2025-10-02 11:00:00');
+
+
+INSERT INTO TRANSACCIONES(id_transaccion, id_transferencia, id_cuenta, id_cuenta_destino, tipo, monto, fecha)
+VALUES ('TX003','TR001','CU001','CU002','retiro',300.00, '2025-10-03 12:00:00'),
+       ('TX004','TR001','CU002','CU002','deposito',300.00, '2025-10-03 12:00:00');

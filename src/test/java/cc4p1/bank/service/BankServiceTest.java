@@ -124,8 +124,8 @@ class BankServiceTest {
   @Test
   void getClientInfo_multipleAccounts_ok() throws Exception {
     try (Connection c = sqlite.get()) {
-      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU002", "CL001", new BigDecimal("1500.00"), java.time.LocalDate.now()));
-      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU003", "CL001", new BigDecimal("3000.00"), java.time.LocalDate.now()));
+      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU010", "CL001", new BigDecimal("1500.00"), java.time.LocalDate.now()));
+      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU011", "CL001", new BigDecimal("3000.00"), java.time.LocalDate.now()));
       c.commit();
     }
 
@@ -140,16 +140,16 @@ class BankServiceTest {
     JsonNode accounts = data.get("accounts");
     assertEquals(3, accounts.size());
     
-    boolean hasCU001 = false, hasCU002 = false, hasCU003 = false;
+    boolean hasCU001 = false, hasCU010 = false, hasCU011 = false;
     for (int i = 0; i < accounts.size(); i++) {
       String accountId = accounts.get(i).path("accountId").asText();
       if ("CU001".equals(accountId)) hasCU001 = true;
-      if ("CU002".equals(accountId)) hasCU002 = true;
-      if ("CU003".equals(accountId)) hasCU003 = true;
+      if ("CU010".equals(accountId)) hasCU010 = true;
+      if ("CU011".equals(accountId)) hasCU011 = true;
     }
     assertTrue(hasCU001);
-    assertTrue(hasCU002);
-    assertTrue(hasCU003);
+    assertTrue(hasCU010);
+    assertTrue(hasCU011);
   }
 
   @Test
@@ -211,7 +211,7 @@ class BankServiceTest {
   void transfer_between_accounts_two_legs() throws Exception {
     // Create destination account CU002 for CL001 with saldo 1000
     try (Connection c = sqlite.get()) {
-      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU002", "CL001", new BigDecimal("1000.00"), java.time.LocalDate.now()));
+      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU010", "CL001", new BigDecimal("1000.00"), java.time.LocalDate.now()));
       c.commit();
     }
 
@@ -219,7 +219,7 @@ class BankServiceTest {
         "type", "Transfer",
         "messageId", "msg-4",
         "fromAccountId", "CU001",
-        "toAccountId", "CU002",
+        "toAccountId", "CU010",
         "amount", "100.00"
     ));
     assertTrue(res.get("ok").asBoolean());
@@ -230,7 +230,7 @@ class BankServiceTest {
     // Verify balances
     try (Connection c = sqlite.get()) {
       var from = accountRepo.findById(c, "CU001");
-      var to = accountRepo.findById(c, "CU002");
+      var to = accountRepo.findById(c, "CU010");
       c.commit();
   assertEquals(0, from.saldo().compareTo(new BigDecimal("2400.00")));
   assertEquals(0, to.saldo().compareTo(new BigDecimal("1100.00")));
@@ -332,12 +332,6 @@ class BankServiceTest {
 
   @Test
   void createLoan_accountBelongsToAnotherClient_error() throws Exception {
-    // Create account for CL002
-    try (Connection c = sqlite.get()) {
-      accountRepo.insert(c, new cc4p1.bank.domain.Cuenta("CU002", "CL002", new BigDecimal("1000.00"), java.time.LocalDate.now()));
-      c.commit();
-    }
-
     // Try to credit loan for CL001 to CL002's account
     JsonNode res = call(Map.of(
         "type", "CreateLoan",

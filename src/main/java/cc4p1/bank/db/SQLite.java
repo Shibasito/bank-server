@@ -52,8 +52,44 @@ public class SQLite {
         runSqlScript(c, sql);
         c.commit();
       } else {
-        c.rollback(); // nada que hacer
+        // Migraciones ligeras para esquemas previos
+        migrateIfNeeded(c);
+        c.commit();
       }
+    }
+  }
+
+  private void migrateIfNeeded(Connection c) throws SQLException {
+    // TRANSACCIONES.id_cuenta_destino (nullable)
+    if (!columnExists(c, "TRANSACCIONES", "id_cuenta_destino")) {
+      try (Statement s = c.createStatement()) {
+        s.executeUpdate("ALTER TABLE TRANSACCIONES ADD COLUMN id_cuenta_destino TEXT");
+      }
+    }
+
+    // PRESTAMOS.id_cuenta (nullable=false) introduced in newer schema
+    if (!columnExists(c, "PRESTAMOS", "id_cuenta")) {
+      try (Statement s = c.createStatement()) {
+        s.executeUpdate("ALTER TABLE PRESTAMOS ADD COLUMN id_cuenta TEXT");
+      }
+    }
+
+    // CLIENTES.password introduced in newer schema
+    if (!columnExists(c, "CLIENTES", "password")) {
+      try (Statement s = c.createStatement()) {
+        s.executeUpdate("ALTER TABLE CLIENTES ADD COLUMN password TEXT");
+      }
+    }
+  }
+
+  private boolean columnExists(Connection c, String tableName, String columnName) throws SQLException {
+    String q = "PRAGMA table_info('" + tableName + "')";
+    try (PreparedStatement ps = c.prepareStatement(q); ResultSet rs = ps.executeQuery()) {
+      while (rs.next()) {
+        String col = rs.getString("name");
+        if (columnName.equalsIgnoreCase(col)) return true;
+      }
+      return false;
     }
   }
 

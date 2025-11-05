@@ -54,6 +54,7 @@ Almacena todas las operaciones realizadas sobre las cuentas.
 | **id_transaccion** | TEXT | PRIMARY KEY | Identificador de la transacción (ej. `TX001`). |
 | **id_transferencia** | TEXT | Opcional, por defecto NULL |  Identificador de transferencia (ej. `TR001`). |
 | **id_cuenta**      | TEXT | FOREIGN KEY → CUENTAS(id_cuenta) | Cuenta sobre la cual se ejecuta la transacción. |
+| **id_cuenta_destino** | TEXT | Opcional, por defecto NULL | Para transferencias: cuenta destino asociada. |
 | **tipo**           | TEXT | CHECK (tipo IN ('deposito','retiro') | Tipo de transacción realizada. |
 | **monto**          | REAL | CHECK (monto >= 0) | Monto del movimiento. |
 | **fecha**     | TEXT | DEFAULT datetime('now') | Fecha y hora de la transacción. |
@@ -307,9 +308,9 @@ En caso de error:
     "accountId": "CU001",
     "currentBalance": 2750.00,
     "items": [
-      { "txId": "TX1042", "idTransferencia": null, "tipo": "deposito", "monto": 150.00, "fecha": "2025-10-28 12:30:10" },
-      { "txId": "TX1040", "idTransferencia": null, "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" },
-      { "txId": "TX1051", "idTransferencia": "TR1051", "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" }
+      { "txId": "TX1042", "idTransferencia": null, "receivingAccountId": null, "tipo": "deposito", "monto": 150.00, "fecha": "2025-10-28 12:30:10" },
+      { "txId": "TX1040", "idTransferencia": null, "receivingAccountId": null, "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" },
+      { "txId": "TX1051", "idTransferencia": "TR1051", "receivingAccountId": "CU010", "tipo": "retiro",   "monto":  50.00, "fecha": "2025-10-28 09:15:02" }
     ],
     "count": 3,
     "hasMore": false
@@ -319,7 +320,9 @@ En caso de error:
 }
 ```
 
-> **Nota:** La respuesta incluye el saldo actual de la cuenta (`currentBalance`) al momento de la consulta.
+> **Notas:**
+> - La respuesta incluye el saldo actual de la cuenta (`currentBalance`) al momento de la consulta.
+> - Para transacciones que forman parte de una transferencia (`idTransferencia` no nulo), se incluye `receivingAccountId` con la cuenta destino.
 >
 > Formato de fechas: `from` y `to` aceptan `YYYY-MM-DD` o ISO8601 con hora (p. ej. `YYYY-MM-DDTHH:MM:SS` o con sufijo `Z`).
 > El servidor normaliza internamente a `YYYY-MM-DD`. Si omites `from`/`to`, se usan valores por defecto para incluir todo el rango.

@@ -173,6 +173,8 @@ public class BankService {
         java.util.Map<String, Object> it = new java.util.LinkedHashMap<>();
         it.put("txId", t.idTransaccion());
         it.put("idTransferencia", t.idTransferencia()); // puede ser null
+        // Para transferencias, incluir la cuenta destino si existe
+        it.put("receivingAccountId", t.idCuentaDestino());
         it.put("tipo", t.tipo().toString());
         it.put("monto", t.monto());
         it.put("fecha", t.fecha() == null ? null : t.fecha().toString().replace('T', ' '));
@@ -326,15 +328,38 @@ public class BankService {
       txRepo.transfer(c, transferId, txId, from, to, amount, accountRepo);
 
       messageRepo.markProcessed(c, msgId);
-      var fromBal = accountRepo.findById(c, from).saldo();
-      var toBal = accountRepo.findById(c, to).saldo();
+      var fromAcc = accountRepo.findById(c, from);
+      var toAcc = accountRepo.findById(c, to);
+      var fromBal = fromAcc.saldo();
+      var toBal = toAcc.saldo();
+
+      // Obtener nombre del titular de la cuenta destino
+      var recvClient = clientRepo.findById(c, toAcc.idCliente());
+      String receivingClientName = null;
+      if (recvClient != null) {
+        StringBuilder sb = new StringBuilder();
+        if (recvClient.nombres() != null && !recvClient.nombres().isEmpty()) sb.append(recvClient.nombres());
+        if (recvClient.apellidoPat() != null && !recvClient.apellidoPat().isEmpty()) {
+          if (sb.length() > 0) sb.append(' ');
+          sb.append(recvClient.apellidoPat());
+        }
+        if (recvClient.apellidoMat() != null && !recvClient.apellidoMat().isEmpty()) {
+          if (sb.length() > 0) sb.append(' ');
+          sb.append(recvClient.apellidoMat());
+        }
+        receivingClientName = sb.toString();
+      }
       c.commit();
 
-      Map<String, Object> data = Map.of(
-          "txId", txId,
-          "transferId", transferId,
-          "fromAccountNewBalance", fromBal,
-          "toAccountNewBalance", toBal);
+      // Usar LinkedHashMap para permitir posibles valores nulos
+      Map<String, Object> data = new LinkedHashMap<>();
+      data.put("txId", txId);
+      data.put("transferId", transferId);
+      data.put("fromAccountId", from);
+      data.put("toAccountId", to);
+      data.put("fromAccountNewBalance", fromBal);
+      data.put("toAccountNewBalance", toBal);
+      data.put("receivingClientName", receivingClientName);
       return ok(data, corrId);
     } catch (Exception e) {
       return error(e.getMessage(), corrId);
